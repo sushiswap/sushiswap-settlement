@@ -1,0 +1,14 @@
+{
+  "extends": "solhint:recommended",
+  "plugins": ["prettier", "buidler"],
+  "rules": {
+    "compiler-version": ["error","^0.6.0"],
+    "max-line-length": ["error",100],
+    "func-visibility": "error",
+    "reentrancy": "error",
+    "no-inline-assembly": "off",
+    "not-rely-on-time": "off",
+    "prettier/prettier": "error",
+    "buidler/no-console": "error"
+  }
+}

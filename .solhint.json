@@ -8,6 +8,7 @@
     "reentrancy": "error",
     "no-inline-assembly": "off",
     "not-rely-on-time": "off",
+    "avoid-low-level-calls": "off",
     "prettier/prettier": "error",
     "buidler/no-console": "error"
   }

@@ -1,26 +1,13 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity =0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "@sushiswap/core/contracts/uniswapv2/libraries/UniswapV2Library.sol";
+import "./BaseSettlement.sol";
 
-abstract contract UniswapV2Router02Delegator {
-    IUniswapV2Router02 public router = IUniswapV2Router02(
-        0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F
-    );
-
-    address public immutable factory;
-    // solhint-disable-next-line var-name-mixedcase
-    address public immutable WETH;
-
-    constructor() public {
-        factory = router.factory();
-        WETH = router.WETH();
-    }
-
-    function fillOrders(bytes memory args) public virtual;
-
+abstract contract UniswapV2Router02Delegator is BaseSettlement {
     function addLiquidity(
         address tokenA,
         address tokenB,
@@ -30,7 +17,7 @@ abstract contract UniswapV2Router02Delegator {
         uint256 amountBMin,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     )
         public
         returns (
@@ -60,7 +47,7 @@ abstract contract UniswapV2Router02Delegator {
         uint256 amountETHMin,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     )
         public
         payable
@@ -90,7 +77,7 @@ abstract contract UniswapV2Router02Delegator {
         uint256 amountBMin,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256 amountA, uint256 amountB) {
         fillOrders(args);
         return
@@ -104,7 +91,7 @@ abstract contract UniswapV2Router02Delegator {
         uint256 amountETHMin,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256 amountToken, uint256 amountETH) {
         fillOrders(args);
         return
@@ -123,7 +110,7 @@ abstract contract UniswapV2Router02Delegator {
         uint8 v,
         bytes32 r,
         bytes32 s,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256 amountA, uint256 amountB) {
         fillOrders(args);
         return
@@ -153,7 +140,7 @@ abstract contract UniswapV2Router02Delegator {
         uint8 v,
         bytes32 r,
         bytes32 s,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256 amountToken, uint256 amountETH) {
         fillOrders(args);
         return
@@ -177,7 +164,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256[] memory amounts) {
         fillOrders(args);
         return router.swapExactTokensForTokens(amountIn, amountOutMin, path, to, deadline);
@@ -189,7 +176,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256[] memory amounts) {
         fillOrders(args);
         return router.swapTokensForExactTokens(amountOut, amountInMax, path, to, deadline);
@@ -200,7 +187,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public payable returns (uint256[] memory amounts) {
         fillOrders(args);
         return router.swapExactETHForTokens(amountOutMin, path, to, deadline);
@@ -212,7 +199,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256[] memory amounts) {
         fillOrders(args);
         return router.swapTokensForExactETH(amountOut, amountInMax, path, to, deadline);
@@ -224,7 +211,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256[] memory amounts) {
         fillOrders(args);
         return router.swapExactTokensForETH(amountIn, amountOutMin, path, to, deadline);
@@ -235,7 +222,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public payable returns (uint256[] memory amounts) {
         fillOrders(args);
         return router.swapETHForExactTokens(amountOut, path, to, deadline);
@@ -288,7 +275,7 @@ abstract contract UniswapV2Router02Delegator {
         uint256 amountETHMin,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256 amountETH) {
         fillOrders(args);
         return
@@ -313,7 +300,7 @@ abstract contract UniswapV2Router02Delegator {
         uint8 v,
         bytes32 r,
         bytes32 s,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public returns (uint256 amountETH) {
         fillOrders(args);
         return
@@ -337,7 +324,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public {
         fillOrders(args);
         return
@@ -355,7 +342,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public payable {
         fillOrders(args);
         return
@@ -373,7 +360,7 @@ abstract contract UniswapV2Router02Delegator {
         address[] memory path,
         address to,
         uint256 deadline,
-        bytes memory args
+        FillOrderArgs[] memory args
     ) public {
         fillOrders(args);
         return

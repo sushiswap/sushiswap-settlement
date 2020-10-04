@@ -18,11 +18,6 @@ contract Settlement is Ownable, UniswapV2Router02 {
     uint256 public rewardPerAmountFilled;
     mapping(bytes32 => OrderInfo) public orderInfoOfHash;
 
-    constructor(IMintable _rewardToken, uint256 _rewardPerAmountFilled) public {
-        rewardToken = _rewardToken;
-        rewardPerAmountFilled = _rewardPerAmountFilled;
-    }
-
     function updateRewardToken(IMintable _rewardToken) public onlyOwner {
         rewardToken = _rewardToken;
     }
@@ -143,6 +138,9 @@ contract Settlement is Ownable, UniswapV2Router02 {
     }
 
     function _transferReward(address toToken, uint256 amountOut) internal {
+        if (address(rewardToken) == address(0) || rewardPerAmountFilled == uint256(0)) {
+            return;
+        }
         // 1. Calculates the amount of toToken filled in ETH value (amountFilledInETH)
         // 2. (amountToMint) = (rewardPerAmountFilled) * (amountFilledInETH)
         // 3. Mint (amountToMint) to msg.sender

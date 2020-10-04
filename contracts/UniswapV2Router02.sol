@@ -23,7 +23,7 @@ abstract contract UniswapV2Router02 is ISettlement {
     address public immutable WETH;
 
     modifier ensure(uint256 deadline) {
-        require(deadline >= block.timestamp, "UniswapV2Router: EXPIRED");
+        require(deadline >= block.timestamp, "EXPIRED");
         _;
     }
 

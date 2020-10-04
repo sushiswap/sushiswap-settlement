@@ -4,21 +4,48 @@ pragma solidity =0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/libraries/UniswapV2Library.sol";
+import "@sushiswap/core/contracts/uniswapv2/libraries/SafeMath.sol";
 import "@sushiswap/core/contracts/uniswapv2/libraries/TransferHelper.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IWETH.sol";
-import "./BaseSettlement.sol";
+import "./interfaces/ISettlement.sol";
 
-abstract contract UniswapV2Router02 is BaseSettlement {
-    receive() external payable {
-        assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
-    }
+abstract contract UniswapV2Router02 is ISettlement {
+    using SafeMathUniswap for uint256;
+
+    IUniswapV2Router02 public router = IUniswapV2Router02(
+        0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F
+    );
+    address public immutable factory;
+    // solhint-disable-next-line var-name-mixedcase
+    address public immutable WETH;
 
     modifier ensure(uint256 deadline) {
         require(deadline >= block.timestamp, "UniswapV2Router: EXPIRED");
         _;
+    }
+
+    constructor() public {
+        factory = router.factory();
+        WETH = router.WETH();
+    }
+
+    function fillOrder(FillOrderArgs memory args)
+        public
+        virtual
+        override
+        returns (uint256 amountOut);
+
+    function fillOrders(FillOrderArgs[] memory args)
+        public
+        virtual
+        override
+        returns (uint256[] memory amountsOut);
+
+    receive() external payable {
+        assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
     }
 
     // **** ADD LIQUIDITY ****

@@ -30,7 +30,7 @@ module.exports = {
     },
     rinkeby: {
       url:
-        "https://eth-mainnet.alchemyapi.io/v2/yLD5iJzUEo_Kvlg_PwMXl7N9ESK2_b6E",
+        "https://eth-rinkeby.alchemyapi.io/v2/OJZiZG5_0djOzypR6uz3tlam1dlIgvBS",
       accounts: [
         process.env.PRIVATE_KEY,
       ],
@@ -45,7 +45,8 @@ module.exports = {
   },
   namedAccounts: {
     deployer: 0,
-    witness: 1,
+    relayer: 1,
+    user: 2
   },
   solc: {
     version: "0.6.12",

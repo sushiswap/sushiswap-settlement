@@ -15,9 +15,6 @@ import "./interfaces/ISettlement.sol";
 abstract contract UniswapV2Router02 is ISettlement {
     using SafeMathUniswap for uint256;
 
-    IUniswapV2Router02 public router = IUniswapV2Router02(
-        0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F
-    );
     address public immutable factory;
     // solhint-disable-next-line var-name-mixedcase
     address public immutable WETH;
@@ -27,9 +24,10 @@ abstract contract UniswapV2Router02 is ISettlement {
         _;
     }
 
-    constructor() public {
-        factory = router.factory();
-        WETH = router.WETH();
+    // solhint-disable-next-line var-name-mixedcase
+    constructor(address _factory, address _WETH) public {
+        factory = _factory;
+        WETH = _WETH;
     }
 
     function fillOrder(FillOrderArgs memory args)

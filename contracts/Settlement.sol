@@ -18,6 +18,11 @@ contract Settlement is Ownable, UniswapV2Router02 {
     uint256 public rewardPerAmountFilled;
     mapping(bytes32 => OrderInfo) public orderInfoOfHash;
 
+    // solhint-disable-next-line var-name-mixedcase, no-empty-blocks
+    constructor(address _factory, address _WETH) public UniswapV2Router02(_factory, _WETH) {
+        // empty
+    }
+
     function updateRewardToken(IMintable _rewardToken) public onlyOwner {
         rewardToken = _rewardToken;
     }

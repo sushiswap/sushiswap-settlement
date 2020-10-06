@@ -3,28 +3,13 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "../libraries/Orders.sol";
+
 interface ISettlement {
     event OrderFilled(bytes32 hash, uint256 amountIn, uint256 amountOut);
 
-    enum Status {Invalid, Fillable, Expired, Filled}
-
-    struct Order {
-        address maker;
-        address fromToken;
-        address toToken;
-        uint256 amountIn;
-        uint256 amountOutMin;
-        address recipient;
-        uint256 deadline;
-    }
-
-    struct OrderInfo {
-        Status status;
-        uint256 filledAmountIn;
-    }
-
     struct FillOrderArgs {
-        Order order;
+        Orders.Order order;
         uint8 v;
         bytes32 r;
         bytes32 s;

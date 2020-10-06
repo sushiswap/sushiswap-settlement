@@ -1,13 +1,29 @@
 {
   "overrides": [
     {
-      "files": "contracts/**/*.sol",
+      "files": [
+        "contracts/**/*.sol"
+      ],
       "options": {
         "printWidth": 100,
         "tabWidth": 4,
         "useTabs": false,
         "singleQuote": false,
         "bracketSpacing": false,
+        "explicitTypes": "always"
+      }
+    },
+    {
+      "files": [
+        "**/*.js"
+      ],
+      "options": {
+        "printWidth": 100,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true,
+        "arrowParens": "avoid",
         "explicitTypes": "always"
       }
     }

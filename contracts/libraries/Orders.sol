@@ -5,6 +5,11 @@ pragma solidity =0.6.12;
 library Orders {
     enum Status {Invalid, Fillable, Expired, Filled}
 
+    bytes32 internal constant ORDER_TYPEHASH = keccak256(
+        // solhint-disable-next-line
+        "Order(address maker,address fromToken,address toToken,address amountIn,address amountOutMin,address recipient,address deadline)"
+    );
+
     struct Order {
         address maker;
         address fromToken;
@@ -50,7 +55,7 @@ library Orders {
             keccak256(
                 abi.encodePacked(
                     chainId,
-                    address(this),
+                    ORDER_TYPEHASH,
                     maker,
                     fromToken,
                     toToken,

@@ -33,6 +33,10 @@ contract Settlement is Ownable, UniswapV2Router02 {
         rewardPerAmountFilled = _rewardPerAmountFilled;
     }
 
+    function hash(Orders.Order memory order) external view returns (bytes32) {
+        return order.hash();
+    }
+
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
         bytes32 hash = args.order.hash();
         if (!_validateArgs(args, hash)) {

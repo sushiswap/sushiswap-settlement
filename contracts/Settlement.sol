@@ -9,9 +9,9 @@ import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IMintable.sol";
 import "./libraries/Verifier.sol";
 import "./mixins/Ownable.sol";
-import "./UniswapV2Router02.sol";
+import "./UniswapV2Router02Settlement.sol";
 
-contract Settlement is Ownable, UniswapV2Router02 {
+contract Settlement is Ownable, UniswapV2Router02Settlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
 
@@ -20,8 +20,12 @@ contract Settlement is Ownable, UniswapV2Router02 {
     uint256 public rewardPerAmountFilled;
     mapping(bytes32 => Orders.OrderInfo) public orderInfoOfHash;
 
-    // solhint-disable-next-line var-name-mixedcase, no-empty-blocks
-    constructor(address _factory, address _WETH) public UniswapV2Router02(_factory, _WETH) {
+    // solhint-disable-next-line var-name-mixedcase
+    constructor(address _factory, address _WETH)
+        public
+        UniswapV2Router02Settlement(_factory, _WETH)
+    // solhint-disable-next-line no-empty-blocks
+    {
         // empty
     }
 

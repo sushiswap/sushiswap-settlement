@@ -12,7 +12,7 @@ import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IWETH.sol";
 import "./interfaces/ISettlement.sol";
 
-abstract contract UniswapV2Router02 is ISettlement {
+abstract contract UniswapV2Router02Settlement is ISettlement {
     using SafeMathUniswap for uint256;
 
     address public immutable factory;
@@ -43,7 +43,8 @@ abstract contract UniswapV2Router02 is ISettlement {
         returns (uint256[] memory amountsOut);
 
     receive() external payable {
-        assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
+        assert(msg.sender == WETH);
+        // only accept ETH via fallback from the WETH contract
     }
 
     // **** ADD LIQUIDITY ****
@@ -164,7 +165,8 @@ abstract contract UniswapV2Router02 is ISettlement {
     ) public ensure(deadline) returns (uint256 amountA, uint256 amountB) {
         fillOrders(args);
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
-        IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity);
+        // send liquidity to pair
         (uint256 amount0, uint256 amount1) = IUniswapV2Pair(pair).burn(to);
         (address token0, ) = UniswapV2Library.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);

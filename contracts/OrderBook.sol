@@ -9,8 +9,8 @@ import "./libraries/Verifier.sol";
 contract OrderBook {
     using Orders for Orders.Order;
 
-    event OrderCreated(bytes32 hash);
-    event OrderCancelled(bytes32 hash);
+    event OrderCreated(bytes32 indexed hash);
+    event OrderCancelled(bytes32 indexed hash);
 
     mapping(address => bytes32[]) internal _hashesOfMaker;
     mapping(address => bytes32[]) internal _hashesOfFromToken;
@@ -50,7 +50,7 @@ contract OrderBook {
         require(recipient != address(0), "invalid-recipient");
         require(deadline > block.timestamp, "invalid-deadline");
 
-        bytes32 callHash = createOrderCallHash(
+        bytes32 hash = createOrderCallHash(
             maker,
             fromToken,
             toToken,
@@ -59,17 +59,8 @@ contract OrderBook {
             recipient,
             deadline
         );
-        require(Verifier.verify(maker, callHash, v, r, s), "not-signed-by-maker");
+        require(Verifier.verify(maker, hash, v, r, s), "not-signed-by-maker");
 
-        bytes32 hash = Orders.hash(
-            maker,
-            fromToken,
-            toToken,
-            amountIn,
-            amountOutMin,
-            recipient,
-            deadline
-        );
         Orders.Order storage order = orders[hash];
         require(order.maker == address(0), "order-exists");
         order.maker = maker;
@@ -79,8 +70,11 @@ contract OrderBook {
         order.amountOutMin = amountOutMin;
         order.recipient = recipient;
         order.deadline = deadline;
+        order.v = v;
+        order.r = r;
+        order.s = s;
 
-        _hashesOfMaker[msg.sender].push(hash);
+        _hashesOfMaker[order.maker].push(hash);
         _hashesOfFromToken[fromToken].push(hash);
         _hashesOfToToken[toToken].push(hash);
 
@@ -96,25 +90,7 @@ contract OrderBook {
         address recipient,
         uint256 deadline
     ) public view returns (bytes32) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        return
-            keccak256(
-                abi.encodePacked(
-                    chainId,
-                    address(this),
-                    this.createOrder.selector,
-                    maker,
-                    fromToken,
-                    toToken,
-                    amountIn,
-                    amountOutMin,
-                    recipient,
-                    deadline
-                )
-            );
+        return Orders.hash(maker, fromToken, toToken, amountIn, amountOutMin, recipient, deadline);
     }
 
     function cancelOrder(

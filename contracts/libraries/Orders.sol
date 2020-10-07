@@ -18,6 +18,9 @@ library Orders {
         uint256 amountOutMin;
         address recipient;
         uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
     }
 
     struct OrderInfo {

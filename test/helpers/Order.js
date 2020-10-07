@@ -20,18 +20,27 @@ class Order {
         this.deadline = deadline;
     }
 
-    async getHash() {
-        const settlement = await getContract("Settlement");
-        return await settlement.hash(this.toArgs());
+    async hash() {
+        const settlement = await getContract("Settlement", this.maker);
+        return await settlement.hash(
+            this.maker._address,
+            this.fromToken.address,
+            this.toToken.address,
+            this.amountIn,
+            this.amountOutMin,
+            this.recipient,
+            this.deadline
+        );
     }
 
     async sign() {
-        const hash = await this.getHash();
+        const hash = await this.hash();
         const signature = await this.maker.signMessage(ethers.utils.arrayify(hash));
         return ethers.utils.splitSignature(signature);
     }
 
-    toArgs() {
+    async toArgs() {
+        const { v, r, s } = await this.sign();
         return [
             this.maker._address,
             this.fromToken.address,
@@ -40,6 +49,9 @@ class Order {
             this.amountOutMin,
             this.recipient,
             this.deadline,
+            v,
+            r,
+            s,
         ];
     }
 }

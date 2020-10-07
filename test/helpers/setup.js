@@ -18,14 +18,10 @@ const fromNow = delay => {
 
 module.exports = async () => {
     const { chainId } = await ethers.provider.detectNetwork();
-    const [user] = await ethers.getSigners();
-    const address = await user.getAddress();
-    const router = await getContract("UniswapV2Router02");
-    const factory = await getContract("UniswapV2Factory");
-    const orderBook = await getContract("OrderBook");
-    const settlement = await getContract("Settlement");
+    const users = await ethers.getSigners();
 
     const getTrade = async (fromToken, toToken, amountIn) => {
+        const factory = await getContract("UniswapV2Factory");
         const pairs = await findPairs(
             chainId,
             factory.address,
@@ -41,22 +37,31 @@ module.exports = async () => {
         )[0];
     };
 
-    const swap = async trade => {
-        const fromER20 = await ethers.getContractAt("IERC20", trade.route.path[0].address);
+    const swap = async (signer, trade, recipient = signer._address) => {
+        const router = await getContract("UniswapV2Router02", signer);
+        const fromER20 = await ethers.getContractAt("IERC20", trade.route.path[0].address, signer);
         await fromER20.approve(router.address, trade.inputAmount.raw.toString());
 
         const { methodName, args } = Router.swapCallParameters(trade, {
             ttl: fromNow(twentyMinutes).toNumber(),
-            recipient: address,
+            recipient,
             allowedSlippage,
         });
         await router.functions[methodName](...args);
     };
 
-    const addLiquidity = async (fromToken, toToken, fromAmount, toAmount, recipient = address) => {
-        const fromER20 = await ethers.getContractAt("IERC20", fromToken.address);
+    const addLiquidity = async (
+        signer,
+        fromToken,
+        toToken,
+        fromAmount,
+        toAmount,
+        recipient = signer._address
+    ) => {
+        const router = await getContract("UniswapV2Router02", signer);
+        const fromER20 = await ethers.getContractAt("IERC20", fromToken.address, signer);
         await fromER20.approve(router.address, fromAmount);
-        const toER20 = await ethers.getContractAt("IERC20", toToken.address);
+        const toER20 = await ethers.getContractAt("IERC20", toToken.address, signer);
         await toER20.approve(router.address, toAmount);
 
         const [token0, token1] = sortTokens(fromToken, toToken);
@@ -76,41 +81,42 @@ module.exports = async () => {
     };
 
     const createOrder = async (signer, fromToken, toToken, amountIn, amountOutMin) => {
-        const fromER20 = await ethers.getContractAt("IERC20", fromToken.address);
-        await fromER20.approve(settlement.address, amountIn);
+        const settlement = await getContract("Settlement", signer);
+        const fromERC20 = await ethers.getContractAt("IERC20", fromToken.address, signer);
+        await fromERC20.approve(settlement.address, amountIn);
 
         const order = new Order(signer, fromToken, toToken, amountIn, amountOutMin);
-        const callHash = await orderBook.createOrderCallHash(...order.toArgs());
-        const signature = await signer.signMessage(ethers.utils.arrayify(callHash));
-        const { v, r, s } = ethers.utils.splitSignature(signature);
-        const tx = await orderBook.createOrder(...order.toArgs(), v, r, s);
+        const orderBook = await getContract("OrderBook", signer);
+        const tx = await orderBook.createOrder(...(await order.toArgs()));
 
         return { order, tx };
     };
 
-    const fillOrder = async (order, trade) => {
-        const { v, r, s } = await order.sign();
-        const args = [
-            order.toArgs(),
-            v,
-            r,
-            s,
+    const cancelOrder = async (signer, hash) => {
+        const orderBook = await getContract("OrderBook", signer);
+        const callHash = await orderBook.cancelOrderCallHash(hash);
+        const signature = await signer.signMessage(ethers.utils.arrayify(callHash));
+        const { v, r, s } = ethers.utils.splitSignature(signature);
+        return await orderBook.cancelOrder(hash, v, r, s);
+    };
+
+    const fillOrder = async (signer, order, trade) => {
+        const settlement = await getContract("Settlement", signer);
+        return await settlement.fillOrder([
+            await order.toArgs(),
             trade.inputAmount.raw.toString(),
             trade.route.path.map(token => token.address),
-        ];
-        return await settlement.fillOrder(args);
+        ]);
     };
 
     return {
         chainId,
-        user,
-        address,
-        orderBook,
-        settlement,
+        users,
         getTrade,
         swap,
         addLiquidity,
         createOrder,
+        cancelOrder,
         fillOrder,
     };
 };

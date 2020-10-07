@@ -36,8 +36,16 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         feeDenominator = _feeDenominator;
     }
 
-    function hash(Orders.Order memory order) external view returns (bytes32) {
-        return order.hash();
+    function hash(
+        address maker,
+        address fromToken,
+        address toToken,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address recipient,
+        uint256 deadline
+    ) external view returns (bytes32) {
+        return Orders.hash(maker, fromToken, toToken, amountIn, amountOutMin, recipient, deadline);
     }
 
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
@@ -64,6 +72,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
         // requires args.amountToFillIn to have already been approved to this
         amountOut = _swapExactTokensForTokens(
+            args.order.maker,
             amountIn,
             amountOutMin,
             args.path,
@@ -74,7 +83,12 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             // Transfer fee if any
             if (args.amountToFillIn > amountIn) {
                 uint256 fee = args.amountToFillIn - amountIn;
-                TransferHelper.safeTransfer(args.order.fromToken, msg.sender, fee);
+                TransferHelper.safeTransferFrom(
+                    args.order.fromToken,
+                    args.order.maker,
+                    msg.sender,
+                    fee
+                );
 
                 emit OrderFeeTransferred(hash, msg.sender, fee);
             }
@@ -102,7 +116,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             args.path.length >= 2 &&
             args.order.fromToken == args.path[0] &&
             args.order.toToken == args.path[args.path.length - 1] &&
-            Verifier.verify(args.order.maker, hash, args.v, args.r, args.s);
+            Verifier.verify(args.order.maker, hash, args.order.v, args.order.r, args.order.s);
     }
 
     function _updateStatus(FillOrderArgs memory args, Orders.OrderInfo storage info)
@@ -127,6 +141,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     function _swapExactTokensForTokens(
+        address from,
         uint256 amountIn,
         uint256 amountOutMin,
         address[] memory path,
@@ -138,9 +153,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         }
         address pair = UniswapV2Library.pairFor(factory, path[0], path[1]);
         // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, ) = path[0].call(
-            abi.encodeWithSelector(0x23b872dd, msg.sender, pair, amountIn)
-        );
+        (bool success, ) = path[0].call(abi.encodeWithSelector(0x23b872dd, from, pair, amountIn));
         if (!success) {
             return 0;
         }

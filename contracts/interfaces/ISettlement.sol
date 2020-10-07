@@ -11,9 +11,6 @@ interface ISettlement {
 
     struct FillOrderArgs {
         Orders.Order order;
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
         uint256 amountToFillIn;
         address[] path;
     }

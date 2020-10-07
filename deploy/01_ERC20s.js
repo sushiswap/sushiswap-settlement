@@ -43,11 +43,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             "deposit"
         );
         await deployERC20(create2, deployer, "DAI Stablecoin", "DAI", 18);
-        await deployERC20(create2, deployer, "USD//C", "USDC", 6);
-        await deployERC20(create2, deployer, "Tether USD", "USDT", 6);
-        await deployERC20(create2, deployer, "Compound", "COMP", 18);
-        await deployERC20(create2, deployer, "Maker", "MKR", 18);
-        await deployERC20(create2, deployer, "OMG Network", "OMG", 18);
-        await deployERC20(create2, deployer, "BAT", "BAT", 18);
+        // await deployERC20(create2, deployer, "USD//C", "USDC", 6);
+        // await deployERC20(create2, deployer, "Tether USD", "USDT", 6);
+        // await deployERC20(create2, deployer, "Compound", "COMP", 18);
+        // await deployERC20(create2, deployer, "Maker", "MKR", 18);
+        // await deployERC20(create2, deployer, "OMG Network", "OMG", 18);
+        // await deployERC20(create2, deployer, "BAT", "BAT", 18);
     }
 };

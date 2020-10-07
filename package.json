@@ -1,7 +1,13 @@
 {
-  "name": "sushiswap-settlement",
-  "version": "1.0.0",
+  "name": "@sushiswap/settlement",
+  "version": "0.1.0",
   "license": "MIT",
+  "description": "Contracts that support limit orders feature for Sushiswap",
+  "files": [
+    "contracts",
+    "artifacts",
+    "deployments"
+  ],
   "scripts": {
     "solhint": "solhint 'contracts/**/*.sol'",
     "build": "buidler prepend-spdx-license && buidler compile",
@@ -11,7 +17,8 @@
     "deploy:buidlerevm": "buidler deploy",
     "deploy:kovan": "buidler deploy --network kovan",
     "deploy:rinkeby": "buidler deploy --network rinkeby",
-    "deploy:mainnet": "buidler deploy --network mainnet"
+    "deploy:mainnet": "buidler deploy --network mainnet",
+    "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.3",

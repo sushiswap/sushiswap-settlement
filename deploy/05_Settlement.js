@@ -16,7 +16,7 @@ const getWethAddress = async get => {
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { call, create2, get } = deployments;
+    const { call, create2, get, execute } = deployments;
 
     const artifact = await deployments.getArtifact("Settlement");
     const contract = {
@@ -34,9 +34,22 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy } = await create2("Settlement", {
         contract,
         from: deployer,
-        args: [await getFactoryAddress(), await getWethAddress(get), 2, 1000], // fee: 0.2%
         log: true,
         gasLimit: 5000000,
     });
     await deploy();
+
+    // Initialize with fee of 0.2%
+    await execute(
+        "Settlement",
+        {
+            from: deployer,
+        },
+        "initialize",
+        deployer,
+        await getFactoryAddress(),
+        await getWethAddress(get),
+        2,
+        1000
+    );
 };

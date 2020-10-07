@@ -15,9 +15,9 @@ import "./interfaces/ISettlement.sol";
 abstract contract UniswapV2Router02Settlement is ISettlement {
     using SafeMathUniswap for uint256;
 
-    address public immutable factory;
+    address public factory;
     // solhint-disable-next-line var-name-mixedcase
-    address public immutable WETH;
+    address public WETH;
 
     modifier ensure(uint256 deadline) {
         require(deadline >= block.timestamp, "EXPIRED");
@@ -25,7 +25,7 @@ abstract contract UniswapV2Router02Settlement is ISettlement {
     }
 
     // solhint-disable-next-line var-name-mixedcase
-    constructor(address _factory, address _WETH) public {
+    function _initialize(address _factory, address _WETH) internal {
         factory = _factory;
         WETH = _WETH;
     }

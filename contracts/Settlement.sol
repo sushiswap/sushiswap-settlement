@@ -16,19 +16,28 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
 
+    bool private _initialized;
     uint256 public feeNumerator;
     uint256 public feeDenominator;
     mapping(bytes32 => Orders.OrderInfo) public orderInfoOfHash;
 
-    constructor(
+    function initialize(
+        address owner,
         address _factory,
         // solhint-disable-next-line var-name-mixedcase
         address _WETH,
         uint256 _feeNumerator,
         uint256 _feeDenominator
-    ) public UniswapV2Router02Settlement(_factory, _WETH) {
+    ) public {
+        require(!_initialized, "already-initialized");
+
+        Ownable._initialize(owner);
+        UniswapV2Router02Settlement._initialize(_factory, _WETH);
+
         feeNumerator = _feeNumerator;
         feeDenominator = _feeDenominator;
+
+        _initialized = true;
     }
 
     function updateFee(uint256 _feeNumerator, uint256 _feeDenominator) public onlyOwner {

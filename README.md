@@ -38,7 +38,7 @@ Let's assume *Alice* created an order to sell **1 ETH** with the maximum price o
 If the call is successful, amounts of tokens transferred are:
 * Limit Order Fee: **1 ETH** x 0.2% = **0.002 ETH** (goes to *Bob*; relayer)
 * Swap Fee: (**1 ETH** - **0.002 ETH**) x 0.3% = **0.002994 ETH** (goes to the liquidity provider)
-* ETH Amount Sold: **1 ETH** - **0.002 ETH** - **0.002994 ETH** = **0.995006 ETH** (goes to the anonymous taker)
+* ETH Amount Sold: **1 ETH** - **0.002 ETH** - **0.002994 ETH** = **0.995006 ETH** (goes to the liquidity pool)
 * DAI Amount Bought: **0.995006 ETH** x **300 DAI** = **298.5018 DAI** (goes to *Alice*; maker)
 
 # License

@@ -4,6 +4,7 @@ pragma solidity =0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/libraries/SafeMath.sol";
+import "@sushiswap/core/contracts/uniswapv2/libraries/TransferHelper.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IMintable.sol";
@@ -15,26 +16,24 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
 
-    IMintable public rewardToken;
-    // How many tokens will be rewarded for every ETH value filled (in 10^18)
-    uint256 public rewardPerAmountFilled;
+    uint256 public feeNumerator;
+    uint256 public feeDenominator;
     mapping(bytes32 => Orders.OrderInfo) public orderInfoOfHash;
 
-    // solhint-disable-next-line var-name-mixedcase
-    constructor(address _factory, address _WETH)
-        public
-        UniswapV2Router02Settlement(_factory, _WETH)
-    // solhint-disable-next-line no-empty-blocks
-    {
-        // empty
+    constructor(
+        address _factory,
+        // solhint-disable-next-line var-name-mixedcase
+        address _WETH,
+        uint256 _feeNumerator,
+        uint256 _feeDenominator
+    ) public UniswapV2Router02Settlement(_factory, _WETH) {
+        feeNumerator = _feeNumerator;
+        feeDenominator = _feeDenominator;
     }
 
-    function updateRewardToken(IMintable _rewardToken) public onlyOwner {
-        rewardToken = _rewardToken;
-    }
-
-    function updateRewardPerAmountFilled(uint256 _rewardPerAmountFilled) public onlyOwner {
-        rewardPerAmountFilled = _rewardPerAmountFilled;
+    function updateFee(uint256 _feeNumerator, uint256 _feeDenominator) public onlyOwner {
+        feeNumerator = _feeNumerator;
+        feeDenominator = _feeDenominator;
     }
 
     function hash(Orders.Order memory order) external view returns (bytes32) {
@@ -52,20 +51,39 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             return 0;
         }
 
+        // Calculate fee deducted amountIn and amountOutMin
+        (uint256 amountIn, uint256 amountOutMin) = (
+            args.amountToFillIn,
+            args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
+        );
+        (uint256 numerator, uint256 denominator) = (feeNumerator, feeDenominator);
+        if (numerator > 0 && denominator > 0) {
+            amountIn = amountIn.sub(amountIn.mul(numerator) / denominator);
+            amountOutMin = amountOutMin.sub(amountOutMin.mul(numerator) / denominator);
+        }
+
         // requires args.amountToFillIn to have already been approved to this
         amountOut = _swapExactTokensForTokens(
-            args.amountToFillIn,
-            args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn,
+            amountIn,
+            amountOutMin,
             args.path,
             args.order.recipient
         );
 
         if (amountOut > 0) {
+            // Transfer fee if any
+            if (args.amountToFillIn > amountIn) {
+                uint256 fee = args.amountToFillIn - amountIn;
+                TransferHelper.safeTransfer(args.order.fromToken, msg.sender, fee);
+
+                emit OrderFeeTransferred(hash, msg.sender, fee);
+            }
+
+            // Update order status
             info.filledAmountIn = info.filledAmountIn + args.amountToFillIn;
             if (info.filledAmountIn == args.order.amountIn) {
                 info.status = Orders.Status.Filled;
             }
-            _transferReward(args.order.toToken, amountOut);
 
             emit OrderFilled(hash, args.amountToFillIn, amountOut);
         }
@@ -119,7 +137,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             return 0;
         }
         address pair = UniswapV2Library.pairFor(factory, path[0], path[1]);
-        // IERC20(path[0]).transferFrom(msg.sender, pair, amountIn)
+        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
         (bool success, ) = path[0].call(
             abi.encodeWithSelector(0x23b872dd, msg.sender, pair, amountIn)
         );
@@ -128,20 +146,6 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         }
         _swap(amounts, path, to);
         amountOut = amounts[amounts.length - 1];
-    }
-
-    function _transferReward(address toToken, uint256 amountOut) internal {
-        if (address(rewardToken) == address(0) || rewardPerAmountFilled == uint256(0)) {
-            return;
-        }
-        // 1. Calculates the amount of toToken filled in ETH value (amountFilledInETH)
-        // 2. (amountToMint) = (rewardPerAmountFilled) * (amountFilledInETH)
-        // 3. Mint (amountToMint) to msg.sender
-        address pair = IUniswapV2Factory(factory).getPair(toToken, WETH);
-        (uint112 toTokenReserve, uint112 wethReserve, ) = IUniswapV2Pair(pair).getReserves();
-        uint256 amountFilledInETH = quote(amountOut, toTokenReserve, wethReserve);
-        uint256 amountToMint = amountFilledInETH.mul(rewardPerAmountFilled) / 10**18;
-        rewardToken.mint(msg.sender, amountToMint);
     }
 
     function fillOrders(FillOrderArgs[] memory args)

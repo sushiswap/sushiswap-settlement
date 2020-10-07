@@ -6,7 +6,8 @@ pragma experimental ABIEncoderV2;
 import "../libraries/Orders.sol";
 
 interface ISettlement {
-    event OrderFilled(bytes32 hash, uint256 amountIn, uint256 amountOut);
+    event OrderFilled(bytes32 indexed hash, uint256 amountIn, uint256 amountOut);
+    event OrderFeeTransferred(bytes32 indexed hash, address indexed recipient, uint256 amount);
 
     struct FillOrderArgs {
         Orders.Order order;

@@ -34,7 +34,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy } = await create2("Settlement", {
         contract,
         from: deployer,
-        args: [await getFactoryAddress(), await getWethAddress(get)],
+        args: [await getFactoryAddress(), await getWethAddress(get), 2, 1000], // fee: 0.2%
         log: true,
         gasLimit: 5000000,
     });

@@ -21,7 +21,7 @@ contract OrderBook {
         address maker,
         uint256 page,
         uint256 limit
-    ) public view returns (bytes32[] memory) {
+    ) external view returns (bytes32[] memory) {
         return _hashes(_hashesOfMaker[maker], page, limit);
     }
 
@@ -29,7 +29,7 @@ contract OrderBook {
         address fromToken,
         uint256 page,
         uint256 limit
-    ) public view returns (bytes32[] memory) {
+    ) external view returns (bytes32[] memory) {
         return _hashes(_hashesOfFromToken[fromToken], page, limit);
     }
 
@@ -37,7 +37,7 @@ contract OrderBook {
         address toToken,
         uint256 page,
         uint256 limit
-    ) public view returns (bytes32[] memory) {
+    ) external view returns (bytes32[] memory) {
         return _hashes(_hashesOfToToken[toToken], page, limit);
     }
 

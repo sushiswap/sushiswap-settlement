@@ -37,19 +37,21 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         log: true,
         gasLimit: 5000000,
     });
-    await deploy();
+    const { newlyDeployed } = await deploy();
 
-    // Initialize with fee of 0.2%
-    await execute(
-        "Settlement",
-        {
-            from: deployer,
-        },
-        "initialize",
-        deployer,
-        await getFactoryAddress(),
-        await getWethAddress(get),
-        2,
-        1000
-    );
+    if (newlyDeployed) {
+        // Initialize with fee of 0.2%
+        await execute(
+            "Settlement",
+            {
+                from: deployer,
+            },
+            "initialize",
+            deployer,
+            await getFactoryAddress(),
+            await getWethAddress(get),
+            2,
+            1000
+        );
+    }
 };

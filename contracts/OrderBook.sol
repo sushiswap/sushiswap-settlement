@@ -17,16 +17,44 @@ contract OrderBook {
     mapping(address => bytes32[]) internal _hashesOfToToken;
     mapping(bytes32 => Orders.Order) public orders;
 
-    function hashesOfMaker(address maker) public view returns (bytes32[] memory) {
-        return _hashesOfMaker[maker];
+    function hashesOfMaker(
+        address maker,
+        uint256 page,
+        uint256 limit
+    ) public view returns (bytes32[] memory) {
+        return _hashes(_hashesOfMaker[maker], page, limit);
     }
 
-    function hashesOfFromToken(address fromToken) public view returns (bytes32[] memory) {
-        return _hashesOfFromToken[fromToken];
+    function hashesOfFromToken(
+        address fromToken,
+        uint256 page,
+        uint256 limit
+    ) public view returns (bytes32[] memory) {
+        return _hashes(_hashesOfFromToken[fromToken], page, limit);
     }
 
-    function hashesOfToToken(address toToken) public view returns (bytes32[] memory) {
-        return _hashesOfToToken[toToken];
+    function hashesOfToToken(
+        address toToken,
+        uint256 page,
+        uint256 limit
+    ) public view returns (bytes32[] memory) {
+        return _hashes(_hashesOfToToken[toToken], page, limit);
+    }
+
+    function _hashes(
+        bytes32[] storage hashes,
+        uint256 page,
+        uint256 limit
+    ) private view returns (bytes32[] memory result) {
+        result = new bytes32[](limit);
+        for (uint256 i = 0; i < limit; i++) {
+            if (page * limit + i >= hashes.length) {
+                result[i] = bytes32(0);
+            } else {
+                result[i] = hashes[page * limit + i];
+            }
+        }
+        return result;
     }
 
     function createOrder(

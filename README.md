@@ -2,7 +2,7 @@
 
 This repository contains solidity contracts to enable **limit orders** for Sushiswap.
 
-## What is this for?
+## Overview
 
 On Sushiswap, you can swap any ERC20 token for another ERC20 token instantly.
 
@@ -11,19 +11,35 @@ However it does not support limit order feature. It only allows you to submit an
 Contracts in this repo help you submit a limit order with a lower price than what it is now. Later, when the price gets lower enough to meet the requirement of your order, it gets settled.
 
 
-## How does it work?
+### Contracts
 It works in decentralized manner, without the need of any centralized authority.
 
-`OrderBook` is the core contract that users would interact with. Anyone can call `createOrder()` to create a limit order with the amount to sell and the maximum price. On that transaction, the amount of tokens you want to sell is transferred to the contract. Then, the order is kept in the orderbook to be filled.
+#### OrderBook
+`OrderBook` keeps limit orders that users have submitted. Anyone can call `createOrder()` to create a limit order with the amount to sell and the maximum price. He/she needs to approve the amount to sell for the `Settlement` contract.
 
-Now, anyone can call `fillOrder()` to fill the order submitted. He/she needs to call it with proper parameters to meet the condition set in the order. If the call is successful, reward is minted to the caller. It is possible to fill only a certain amount of tokens, not all. In most cases, submitted orders will reside on the orderbook and their amount will be filled by different callers in different blocks.
+The maker of the order can cancel it with `cancelOrder()`. It accepts the hash of the order created.
 
-Before all the amount is filled, maker of the order can call `cancelOrder()` on it. Otherwise if the deadline of the order expired, anyone can cancel it.
+#### Settlement
+`Settlement` is in charge of swapping tokens for orders. Anyone can call `fillOrder()` to fill the order submitted. We'll call this caller a 'relayer'. Relayers need to call it with proper parameters to meet the maximum price requirement set in the order. If the call is successful, fee will be transferred to the relayer.
 
-## Who would fill orders and why?
-`OrderBook` is a wrapper contract around `UniswapV2Router02` and `MasterChef`. Every function in these two contracts are duplicated in the `OrderBook` with an extra parameter `args`. If `args` is not empty, it is used for filling orders; see `OrderBook.fillOrders()` for details.
+It is possible to fill only a certain amount of tokens, not all. In most cases, submitted orders will reside on the `OrderBook` and their amount will be filled by different callers in different blocks.
 
-Users could just call normal functions without `args` for the original contracts or call it with proper `args` on `OrderBook` to be rewarded. It's their choice!
+### Incentives
+#### Relayer
+`Settlement` is a wrapper contract around `UniswapV2Router02`. Every function in this contract has a duplicated version in the `Settlement` with an extra parameter `args`. If `args` is not empty, it is used for filling orders; see `Settlement.fillOrders()` for details.
+
+So, users for sushiswap can choose to be a relayer or not. If he/she decided to do so, calling any swap functions in `Settlement` will benefit them. Otherwise, he/she can just call functions in `UniswapV2Router02` without receiving any fee.
+ 
+#### Fee
+For every `fillOrder()` call, 0.2% of fee for the amount sold is transferred to the relayer. The fee is deducted prior to the swap.
+
+Let's assume *Alice* created an order to sell **1 ETH** with the maximum price of **300 DAI**. Current price of **ETH** is **400 DAI** so this order cannot be filled right away. Leter, when the market price goes down to **300 DAI**, *Bob* is filling the entire amount of this order as a relayer.
+
+If the call is successful, amounts of tokens transferred are:
+* Limit Order Fee: **1 ETH** x 0.2% = **0.002 ETH** (goes to *Bob*; relayer)
+* Swap Fee: (**1 ETH** - **0.002 ETH**) x 0.3% = **0.002994 ETH** (goes to the liquidity provider)
+* ETH Amount Sold: **1 ETH** - **0.002 ETH** - **0.002994 ETH** = **0.995006 ETH** (goes to the anonymous taker)
+* DAI Amount Bought: **0.995006 ETH** x **300 DAI** = **298.5018 DAI** (goes to *Alice*; maker)
 
 # License
 MIT

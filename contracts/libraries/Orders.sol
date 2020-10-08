@@ -50,14 +50,9 @@ library Orders {
         address recipient,
         uint256 deadline
     ) internal view returns (bytes32) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
         return
             keccak256(
                 abi.encodePacked(
-                    chainId,
                     ORDER_TYPEHASH,
                     maker,
                     fromToken,

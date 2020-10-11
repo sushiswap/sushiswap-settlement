@@ -80,12 +80,20 @@ module.exports = async () => {
         );
     };
 
-    const createOrder = async (signer, fromToken, toToken, amountIn, amountOutMin) => {
+    const createOrder = async (signer, fromToken, toToken, amountIn, amountOutMin, deadline) => {
         const settlement = await getContract("Settlement", signer);
         const fromERC20 = await ethers.getContractAt("IERC20", fromToken.address, signer);
         await fromERC20.approve(settlement.address, amountIn);
 
-        const order = new Order(signer, fromToken, toToken, amountIn, amountOutMin);
+        const order = new Order(
+            signer,
+            fromToken,
+            toToken,
+            amountIn,
+            amountOutMin,
+            signer._address,
+            deadline
+        );
         const orderBook = await getContract("OrderBook", signer);
         const tx = await orderBook.createOrder(...(await order.toArgs()));
 

@@ -12,10 +12,27 @@ contract OrderBook {
     event OrderCreated(bytes32 indexed hash);
     event OrderCancelled(bytes32 indexed hash);
 
+    bytes32[] internal _allHashes;
     mapping(address => bytes32[]) internal _hashesOfMaker;
     mapping(address => bytes32[]) internal _hashesOfFromToken;
     mapping(address => bytes32[]) internal _hashesOfToToken;
-    mapping(bytes32 => Orders.Order) public orders;
+    mapping(bytes32 => Orders.Order) public orderOfHash;
+
+    function numberOfHashesOfMaker(address maker) external view returns (uint256) {
+        return _hashesOfMaker[maker].length;
+    }
+
+    function numberOfHashesOfFromToken(address fromToken) external view returns (uint256) {
+        return _hashesOfFromToken[fromToken].length;
+    }
+
+    function numberOfHashesOfToToken(address toToken) external view returns (uint256) {
+        return _hashesOfToToken[toToken].length;
+    }
+
+    function numberOfAllHashes() external view returns (uint256) {
+        return _allHashes.length;
+    }
 
     function hashesOfMaker(
         address maker,
@@ -39,6 +56,10 @@ contract OrderBook {
         uint256 limit
     ) external view returns (bytes32[] memory) {
         return _hashes(_hashesOfToToken[toToken], page, limit);
+    }
+
+    function allHashes(uint256 page, uint256 limit) external view returns (bytes32[] memory) {
+        return _hashes(_allHashes, page, limit);
     }
 
     function _hashes(
@@ -89,7 +110,7 @@ contract OrderBook {
         );
         require(Verifier.verify(maker, hash, v, r, s), "not-signed-by-maker");
 
-        Orders.Order storage order = orders[hash];
+        Orders.Order storage order = orderOfHash[hash];
         require(order.maker == address(0), "order-exists");
         order.maker = maker;
         order.fromToken = fromToken;
@@ -102,11 +123,40 @@ contract OrderBook {
         order.r = r;
         order.s = s;
 
-        _hashesOfMaker[order.maker].push(hash);
-        _hashesOfFromToken[fromToken].push(hash);
-        _hashesOfToToken[toToken].push(hash);
+        _addHash(_allHashes, hash, deadline);
+        _addHash(_hashesOfMaker[maker], hash, deadline);
+        _addHash(_hashesOfFromToken[fromToken], hash, deadline);
+        _addHash(_hashesOfToToken[toToken], hash, deadline);
 
         emit OrderCreated(hash);
+    }
+
+    function _addHash(
+        bytes32[] storage hashes,
+        bytes32 hash,
+        uint256 deadline
+    ) internal {
+        // hashes are ordered by deadline increasingly
+        if (hashes.length == 0) {
+            hashes.push(hash);
+            return;
+        }
+        uint256 index = uint256(-1);
+        for (uint256 i = 0; i < hashes.length; i++) {
+            if (orderOfHash[hashes[i]].deadline > deadline) {
+                index = i;
+                break;
+            }
+        }
+        if (index == uint256(-1)) {
+            hashes.push(hash);
+            return;
+        }
+        hashes.push();
+        for (uint256 i = hashes.length - 1; i > index; i--) {
+            hashes[i] = hashes[i - 1];
+        }
+        hashes[index] = hash;
     }
 
     function createOrderCallHash(
@@ -127,12 +177,13 @@ contract OrderBook {
         bytes32 r,
         bytes32 s
     ) external {
-        Orders.Order storage order = orders[hash];
+        Orders.Order storage order = orderOfHash[hash];
         require(order.maker != address(0), "no-order-exists");
 
         bytes32 callHash = cancelOrderCallHash(hash);
         require(Verifier.verify(order.maker, callHash, v, r, s), "not-signed-by-maker");
 
+        _removeHash(_allHashes, hash);
         _removeHash(_hashesOfMaker[order.maker], hash);
         _removeHash(_hashesOfFromToken[order.fromToken], hash);
         _removeHash(_hashesOfToToken[order.toToken], hash);
@@ -141,12 +192,17 @@ contract OrderBook {
     }
 
     function _removeHash(bytes32[] storage hashes, bytes32 hash) internal {
+        // hashes are ordered by deadline increasingly
+        uint256 index = hashes.length - 1;
         for (uint256 i = 0; i < hashes.length; i++) {
             if (hashes[i] == hash) {
-                hashes[i] = hashes[hashes.length - 1];
-                hashes.pop();
+                index = i;
             }
         }
+        for (uint256 i = index; i < hashes.length - 1; i++) {
+            hashes[i] = hashes[i + 1];
+        }
+        hashes.pop();
     }
 
     function cancelOrderCallHash(bytes32 hash) public view returns (bytes32) {

@@ -15,7 +15,7 @@ Contracts in this repo help you submit a limit order with a lower price than wha
 It works in a decentralized manner, without the need of any centralized authority.
 
 ### OrderBook
-`OrderBook` is deployed at `0xd851e9c98bec76a4945e2bb79183ab9a309c6b92` on kovan and rinkeby testnets.
+`OrderBook` is deployed at `0x363a4d1500f15c0212995ecbd968291eded342ff` on kovan and rinkeby testnets.
 
 `OrderBook` keeps limit orders that users have submitted. Anyone can call `createOrder()` to create a limit order with the amount to sell and the minimum price. He/she needs to approve the amount to sell for the `Settlement` contract.
 

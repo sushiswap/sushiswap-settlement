@@ -16,6 +16,7 @@ describe("Settlement", function () {
             addLiquidity,
             createOrder,
             fillOrder,
+            filledAmountIn,
         } = await helpers.setup();
         const settlement = await helpers.getContract("Settlement");
         const fromToken = WETH[chainId];
@@ -63,6 +64,7 @@ describe("Settlement", function () {
         const filled = settlement.interface.decodeEventLog("OrderFilled", event.data, event.topics);
         await helpers.expectToEqual(filled.hash, order.hash());
         await helpers.expectToEqual(filled.amountIn, amountIn);
+        await helpers.expectToEqual(amountIn, filledAmountIn(users[1], order));
 
         // The relayer should have received a fee
         const fee = amountIn

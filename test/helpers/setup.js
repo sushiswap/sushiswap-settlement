@@ -117,6 +117,11 @@ module.exports = async () => {
         ]);
     };
 
+    const filledAmountIn = async (signer, order) => {
+        const settlement = await getContract("Settlement", signer);
+        return await settlement.filledAmountInOfHash(await order.hash());
+    };
+
     return {
         chainId,
         users,
@@ -126,5 +131,6 @@ module.exports = async () => {
         createOrder,
         cancelOrder,
         fillOrder,
+        filledAmountIn,
     };
 };

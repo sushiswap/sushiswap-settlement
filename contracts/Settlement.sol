@@ -19,7 +19,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     bool private _initialized;
     uint256 public feeNumerator;
     uint256 public feeDenominator;
-    mapping(bytes32 => Orders.OrderInfo) public orderInfoOfHash;
+    mapping(bytes32 => uint256) public filledAmountInOfHash;
 
     function initialize(
         address owner,
@@ -62,9 +62,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         if (!_validateArgs(args, hash)) {
             return 0;
         }
-
-        Orders.OrderInfo storage info = orderInfoOfHash[hash];
-        if (_updateStatus(args, info) != Orders.Status.Fillable) {
+        if (!_validateStatus(args, hash)) {
             return 0;
         }
 
@@ -103,10 +101,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             }
 
             // Update order status
-            info.filledAmountIn = info.filledAmountIn + args.amountToFillIn;
-            if (info.filledAmountIn == args.order.amountIn) {
-                info.status = Orders.Status.Filled;
-            }
+            filledAmountInOfHash[hash] = filledAmountInOfHash[hash] + args.amountToFillIn;
 
             emit OrderFilled(hash, args.amountToFillIn, amountOut);
         }
@@ -128,25 +123,15 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             Verifier.verify(args.order.maker, hash, args.order.v, args.order.r, args.order.s);
     }
 
-    function _updateStatus(FillOrderArgs memory args, Orders.OrderInfo storage info)
-        internal
-        returns (Orders.Status)
-    {
-        if (info.status == Orders.Status.Invalid) {
-            info.status = Orders.Status.Fillable;
+    function _validateStatus(FillOrderArgs memory args, bytes32 hash) internal view returns (bool) {
+        if (args.order.deadline < block.timestamp) {
+            return false;
         }
-        Orders.Status status = info.status;
-        if (status == Orders.Status.Fillable) {
-            if (args.order.deadline < block.timestamp) {
-                info.status = Orders.Status.Expired;
-                return Orders.Status.Expired;
-            } else if (info.filledAmountIn.add(args.amountToFillIn) > args.order.amountIn) {
-                return Orders.Status.Invalid;
-            } else {
-                return Orders.Status.Fillable;
-            }
+        uint256 filledAmountIn = filledAmountInOfHash[hash];
+        if (filledAmountIn.add(args.amountToFillIn) > args.order.amountIn) {
+            return false;
         }
-        return status;
+        return true;
     }
 
     function _swapExactTokensForTokens(

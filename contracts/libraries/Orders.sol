@@ -23,11 +23,6 @@ library Orders {
         bytes32 s;
     }
 
-    struct OrderInfo {
-        Status status;
-        uint256 filledAmountIn;
-    }
-
     function hash(Order memory order) internal view returns (bytes32) {
         return
             hash(

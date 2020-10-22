@@ -89,7 +89,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         if (amountOut > 0) {
             // Transfer fee if any
             if (args.amountToFillIn > amountIn) {
-                uint256 fee = args.amountToFillIn - amountIn;
+                uint256 fee = args.amountToFillIn.sub(amountIn);
                 TransferHelper.safeTransferFrom(
                     args.order.fromToken,
                     args.order.maker,
@@ -101,7 +101,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             }
 
             // Update order status
-            filledAmountInOfHash[hash] = filledAmountInOfHash[hash] + args.amountToFillIn;
+            filledAmountInOfHash[hash] = filledAmountInOfHash[hash].add(args.amountToFillIn);
 
             emit OrderFilled(hash, args.amountToFillIn, amountOut);
         }

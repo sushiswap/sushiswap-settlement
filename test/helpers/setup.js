@@ -100,12 +100,9 @@ module.exports = async () => {
         return { order, tx };
     };
 
-    const cancelOrder = async (signer, hash) => {
-        const orderBook = await getContract("OrderBook", signer);
-        const callHash = await orderBook.cancelOrderCallHash(hash);
-        const signature = await signer.signMessage(ethers.utils.arrayify(callHash));
-        const { v, r, s } = ethers.utils.splitSignature(signature);
-        return await orderBook.cancelOrder(hash, v, r, s);
+    const cancelOrder = async (signer, order) => {
+        const settlement = await getContract("Settlement", signer);
+        return await settlement.cancelOrder(await order.toArgs());
     };
 
     const fillOrder = async (signer, order, trade) => {

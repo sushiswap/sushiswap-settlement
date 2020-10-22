@@ -9,14 +9,21 @@ import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IMintable.sol";
 import "./libraries/Verifier.sol";
+import "./libraries/Bytes32Pagination.sol";
 import "./mixins/Ownable.sol";
 import "./UniswapV2Router02Settlement.sol";
 
 contract Settlement is Ownable, UniswapV2Router02Settlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
+    using Bytes32Pagination for bytes32[];
 
     bool private _initialized;
+    bytes32[] internal _allCanceledHashes;
+    mapping(address => bytes32[]) internal _canceledHashesOfMaker;
+    mapping(address => bytes32[]) internal _canceledHashesOfFromToken;
+    mapping(address => bytes32[]) internal _canceledHashesOfToToken;
+    mapping(bytes32 => bool) public canceled;
     uint256 public feeNumerator;
     uint256 public feeDenominator;
     mapping(bytes32 => uint256) public filledAmountInOfHash;
@@ -45,7 +52,51 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         feeDenominator = _feeDenominator;
     }
 
-    function hash(
+    function numberOfCanceledHashesOfMaker(address maker) public view returns (uint256) {
+        return _canceledHashesOfMaker[maker].length;
+    }
+
+    function numberOfCanceledHashesOfFromToken(address fromToken) public view returns (uint256) {
+        return _canceledHashesOfFromToken[fromToken].length;
+    }
+
+    function numberOfCanceledHashesOfToToken(address toToken) public view returns (uint256) {
+        return _canceledHashesOfToToken[toToken].length;
+    }
+
+    function numberOfAllCanceledHashes() public view returns (uint256) {
+        return _allCanceledHashes.length;
+    }
+
+    function canceledHashesOfMaker(
+        address maker,
+        uint256 page,
+        uint256 limit
+    ) public view returns (bytes32[] memory) {
+        return _canceledHashesOfMaker[maker].paginate(page, limit);
+    }
+
+    function canceledHashesOfFromToken(
+        address fromToken,
+        uint256 page,
+        uint256 limit
+    ) public view returns (bytes32[] memory) {
+        return _canceledHashesOfFromToken[fromToken].paginate(page, limit);
+    }
+
+    function canceledHashesOfToToken(
+        address toToken,
+        uint256 page,
+        uint256 limit
+    ) public view returns (bytes32[] memory) {
+        return _canceledHashesOfToToken[toToken].paginate(page, limit);
+    }
+
+    function allCanceledHashes(uint256 page, uint256 limit) public view returns (bytes32[] memory) {
+        return _allCanceledHashes.paginate(page, limit);
+    }
+
+    function hashOfOrder(
         address maker,
         address fromToken,
         address toToken,
@@ -53,12 +104,15 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         uint256 amountOutMin,
         address recipient,
         uint256 deadline
-    ) external view returns (bytes32) {
+    ) public pure returns (bytes32) {
         return Orders.hash(maker, fromToken, toToken, amountIn, amountOutMin, recipient, deadline);
     }
 
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
         bytes32 hash = args.order.hash();
+        if (canceled[hash]) {
+            return 0;
+        }
         if (!_validateArgs(args, hash)) {
             return 0;
         }
@@ -164,5 +218,19 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         for (uint256 i = 0; i < args.length; i++) {
             amountsOut[i] = fillOrder(args[i]);
         }
+    }
+
+    function cancelOrder(Orders.Order memory order) public override {
+        bytes32 hash = order.hash();
+        require(Verifier.verify(order.maker, hash, order.v, order.r, order.s), "invalid-order");
+        require(msg.sender == order.maker, "not-called-by-maker");
+
+        _allCanceledHashes.push(hash);
+        _canceledHashesOfMaker[order.maker].push(hash);
+        _canceledHashesOfFromToken[order.fromToken].push(hash);
+        _canceledHashesOfToToken[order.toToken].push(hash);
+        canceled[hash] = true;
+
+        emit OrderCanceled(hash);
     }
 }

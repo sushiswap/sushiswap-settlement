@@ -5,12 +5,13 @@ pragma solidity =0.6.12;
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
 import "./libraries/Orders.sol";
 import "./libraries/Verifier.sol";
+import "./libraries/Bytes32Pagination.sol";
 
 contract OrderBook {
     using Orders for Orders.Order;
+    using Bytes32Pagination for bytes32[];
 
     event OrderCreated(bytes32 indexed hash);
-    event OrderCancelled(bytes32 indexed hash);
 
     bytes32[] internal _allHashes;
     mapping(address => bytes32[]) internal _hashesOfMaker;
@@ -39,7 +40,7 @@ contract OrderBook {
         uint256 page,
         uint256 limit
     ) external view returns (bytes32[] memory) {
-        return _hashes(_hashesOfMaker[maker], page, limit);
+        return _hashesOfMaker[maker].paginate(page, limit);
     }
 
     function hashesOfFromToken(
@@ -47,7 +48,7 @@ contract OrderBook {
         uint256 page,
         uint256 limit
     ) external view returns (bytes32[] memory) {
-        return _hashes(_hashesOfFromToken[fromToken], page, limit);
+        return _hashesOfFromToken[fromToken].paginate(page, limit);
     }
 
     function hashesOfToToken(
@@ -55,27 +56,11 @@ contract OrderBook {
         uint256 page,
         uint256 limit
     ) external view returns (bytes32[] memory) {
-        return _hashes(_hashesOfToToken[toToken], page, limit);
+        return _hashesOfToToken[toToken].paginate(page, limit);
     }
 
     function allHashes(uint256 page, uint256 limit) external view returns (bytes32[] memory) {
-        return _hashes(_allHashes, page, limit);
-    }
-
-    function _hashes(
-        bytes32[] storage hashes,
-        uint256 page,
-        uint256 limit
-    ) private view returns (bytes32[] memory result) {
-        result = new bytes32[](limit);
-        for (uint256 i = 0; i < limit; i++) {
-            if (page * limit + i >= hashes.length) {
-                result[i] = bytes32(0);
-            } else {
-                result[i] = hashes[page * limit + i];
-            }
-        }
-        return result;
+        return _allHashes.paginate(page, limit);
     }
 
     function createOrder(
@@ -167,49 +152,7 @@ contract OrderBook {
         uint256 amountOutMin,
         address recipient,
         uint256 deadline
-    ) public view returns (bytes32) {
+    ) public pure returns (bytes32) {
         return Orders.hash(maker, fromToken, toToken, amountIn, amountOutMin, recipient, deadline);
-    }
-
-    function cancelOrder(
-        bytes32 hash,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
-        Orders.Order storage order = orderOfHash[hash];
-        require(order.maker != address(0), "no-order-exists");
-
-        bytes32 callHash = cancelOrderCallHash(hash);
-        require(Verifier.verify(order.maker, callHash, v, r, s), "not-signed-by-maker");
-
-        _removeHash(_allHashes, hash);
-        _removeHash(_hashesOfMaker[order.maker], hash);
-        _removeHash(_hashesOfFromToken[order.fromToken], hash);
-        _removeHash(_hashesOfToToken[order.toToken], hash);
-
-        emit OrderCancelled(hash);
-    }
-
-    function _removeHash(bytes32[] storage hashes, bytes32 hash) internal {
-        // hashes are ordered by deadline increasingly
-        uint256 index = hashes.length - 1;
-        for (uint256 i = 0; i < hashes.length; i++) {
-            if (hashes[i] == hash) {
-                index = i;
-            }
-        }
-        for (uint256 i = index; i < hashes.length - 1; i++) {
-            hashes[i] = hashes[i + 1];
-        }
-        hashes.pop();
-    }
-
-    function cancelOrderCallHash(bytes32 hash) public view returns (bytes32) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        return keccak256(abi.encodePacked(chainId, address(this), this.cancelOrder.selector, hash));
     }
 }

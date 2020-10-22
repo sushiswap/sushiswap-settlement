@@ -23,7 +23,7 @@ library Orders {
         bytes32 s;
     }
 
-    function hash(Order memory order) internal view returns (bytes32) {
+    function hash(Order memory order) internal pure returns (bytes32) {
         return
             hash(
                 order.maker,
@@ -44,7 +44,7 @@ library Orders {
         uint256 amountOutMin,
         address recipient,
         uint256 deadline
-    ) internal view returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(

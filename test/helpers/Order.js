@@ -22,7 +22,7 @@ class Order {
 
     async hash() {
         const settlement = await getContract("Settlement", this.maker);
-        return await settlement.hash(
+        return await settlement.hashOfOrder(
             this.maker._address,
             this.fromToken.address,
             this.toToken.address,

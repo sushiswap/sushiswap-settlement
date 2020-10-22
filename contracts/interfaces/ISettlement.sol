@@ -8,6 +8,7 @@ import "../libraries/Orders.sol";
 interface ISettlement {
     event OrderFilled(bytes32 indexed hash, uint256 amountIn, uint256 amountOut);
     event OrderFeeTransferred(bytes32 indexed hash, address indexed recipient, uint256 amount);
+    event OrderCanceled(bytes32 indexed hash);
 
     struct FillOrderArgs {
         Orders.Order order;
@@ -20,4 +21,6 @@ interface ISettlement {
     function fillOrders(FillOrderArgs[] calldata args)
         external
         returns (uint256[] memory amountsOut);
+
+    function cancelOrder(Orders.Order calldata order) external;
 }

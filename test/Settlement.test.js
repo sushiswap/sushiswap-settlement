@@ -95,7 +95,7 @@ describe("Settlement", function () {
             await getTrade(toToken, fromToken, ethers.constants.WeiPerEther.mul(10))
         );
 
-        const fromERC20 = await ethers.getContractAt("IERC20", fromToken.address);
+        const fromERC20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address);
         await helpers.expectToEqual(ethers.constants.Zero, fromERC20.balanceOf(users[1]._address));
 
         // Call fillOrder() and it now works because DAI price increased more than 1%

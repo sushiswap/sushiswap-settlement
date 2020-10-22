@@ -10,13 +10,8 @@ library Verifier {
         bytes32 r,
         bytes32 s
     ) internal pure returns (bool) {
-        bool verified = signer == ecrecover(hash, v, r, s);
-        if (verified) {
-            return true;
-        } else {
-            // Consider it signed by web3.eth_sign
-            hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-            return signer == ecrecover(hash, v, r, s);
-        }
+        // It needs to have been signed by web3.eth_sign
+        hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+        return signer == ecrecover(hash, v, r, s);
     }
 }

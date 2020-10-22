@@ -39,7 +39,11 @@ module.exports = async () => {
 
     const swap = async (signer, trade, recipient = signer._address) => {
         const router = await getContract("UniswapV2Router02", signer);
-        const fromER20 = await ethers.getContractAt("IERC20", trade.route.path[0].address, signer);
+        const fromER20 = await ethers.getContractAt(
+            "IUniswapV2ERC20",
+            trade.route.path[0].address,
+            signer
+        );
         await fromER20.approve(router.address, trade.inputAmount.raw.toString());
 
         const { methodName, args } = Router.swapCallParameters(trade, {
@@ -59,9 +63,9 @@ module.exports = async () => {
         recipient = signer._address
     ) => {
         const router = await getContract("UniswapV2Router02", signer);
-        const fromER20 = await ethers.getContractAt("IERC20", fromToken.address, signer);
+        const fromER20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address, signer);
         await fromER20.approve(router.address, fromAmount);
-        const toER20 = await ethers.getContractAt("IERC20", toToken.address, signer);
+        const toER20 = await ethers.getContractAt("IUniswapV2ERC20", toToken.address, signer);
         await toER20.approve(router.address, toAmount);
 
         const [token0, token1] = sortTokens(fromToken, toToken);
@@ -82,7 +86,7 @@ module.exports = async () => {
 
     const createOrder = async (signer, fromToken, toToken, amountIn, amountOutMin, deadline) => {
         const settlement = await getContract("Settlement", signer);
-        const fromERC20 = await ethers.getContractAt("IERC20", fromToken.address, signer);
+        const fromERC20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address, signer);
         await fromERC20.approve(settlement.address, amountIn);
 
         const order = new Order(

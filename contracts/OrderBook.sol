@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity =0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
 import "./libraries/Orders.sol";
@@ -19,19 +20,19 @@ contract OrderBook {
     mapping(address => bytes32[]) internal _hashesOfToToken;
     mapping(bytes32 => Orders.Order) public orderOfHash;
 
-    function numberOfHashesOfMaker(address maker) external view returns (uint256) {
+    function numberOfHashesOfMaker(address maker) public view returns (uint256) {
         return _hashesOfMaker[maker].length;
     }
 
-    function numberOfHashesOfFromToken(address fromToken) external view returns (uint256) {
+    function numberOfHashesOfFromToken(address fromToken) public view returns (uint256) {
         return _hashesOfFromToken[fromToken].length;
     }
 
-    function numberOfHashesOfToToken(address toToken) external view returns (uint256) {
+    function numberOfHashesOfToToken(address toToken) public view returns (uint256) {
         return _hashesOfToToken[toToken].length;
     }
 
-    function numberOfAllHashes() external view returns (uint256) {
+    function numberOfAllHashes() public view returns (uint256) {
         return _allHashes.length;
     }
 
@@ -39,7 +40,7 @@ contract OrderBook {
         address maker,
         uint256 page,
         uint256 limit
-    ) external view returns (bytes32[] memory) {
+    ) public view returns (bytes32[] memory) {
         return _hashesOfMaker[maker].paginate(page, limit);
     }
 
@@ -47,7 +48,7 @@ contract OrderBook {
         address fromToken,
         uint256 page,
         uint256 limit
-    ) external view returns (bytes32[] memory) {
+    ) public view returns (bytes32[] memory) {
         return _hashesOfFromToken[fromToken].paginate(page, limit);
     }
 
@@ -55,63 +56,45 @@ contract OrderBook {
         address toToken,
         uint256 page,
         uint256 limit
-    ) external view returns (bytes32[] memory) {
+    ) public view returns (bytes32[] memory) {
         return _hashesOfToToken[toToken].paginate(page, limit);
     }
 
-    function allHashes(uint256 page, uint256 limit) external view returns (bytes32[] memory) {
+    function allHashes(uint256 page, uint256 limit) public view returns (bytes32[] memory) {
         return _allHashes.paginate(page, limit);
     }
 
-    function createOrder(
-        address maker,
-        address fromToken,
-        address toToken,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address recipient,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
-        require(maker != address(0), "invalid-maker-address");
-        require(fromToken != address(0), "invalid-from-token-address");
-        require(toToken != address(0), "invalid-to-token-address");
-        require(fromToken != toToken, "duplicate-token-addresses");
-        require(amountIn > 0, "invalid-amount-in");
-        require(amountOutMin > 0, "invalid-amount-out-min");
-        require(recipient != address(0), "invalid-recipient");
-        require(deadline > block.timestamp, "invalid-deadline");
+    function createOrder(Orders.Order memory order) public {
+        require(order.maker != address(0), "invalid-maker-address");
+        require(order.fromToken != address(0), "invalid-from-token-address");
+        require(order.toToken != address(0), "invalid-to-token-address");
+        require(order.fromToken != order.toToken, "duplicate-token-addresses");
+        require(order.amountIn > 0, "invalid-amount-in");
+        require(order.amountOutMin > 0, "invalid-amount-out-min");
+        require(order.recipient != address(0), "invalid-recipient");
+        require(order.deadline > block.timestamp, "invalid-deadline");
 
         bytes32 hash = createOrderCallHash(
-            maker,
-            fromToken,
-            toToken,
-            amountIn,
-            amountOutMin,
-            recipient,
-            deadline
+            order.maker,
+            order.fromToken,
+            order.toToken,
+            order.amountIn,
+            order.amountOutMin,
+            order.recipient,
+            order.deadline
         );
-        require(Verifier.verify(maker, hash, v, r, s), "not-signed-by-maker");
+        require(
+            Verifier.verify(order.maker, hash, order.v, order.r, order.s),
+            "not-signed-by-maker"
+        );
 
-        Orders.Order storage order = orderOfHash[hash];
-        require(order.maker == address(0), "order-exists");
-        order.maker = maker;
-        order.fromToken = fromToken;
-        order.toToken = toToken;
-        order.amountIn = amountIn;
-        order.amountOutMin = amountOutMin;
-        order.recipient = recipient;
-        order.deadline = deadline;
-        order.v = v;
-        order.r = r;
-        order.s = s;
+        require(orderOfHash[hash].maker == address(0), "order-exists");
+        orderOfHash[hash] = order;
 
-        _addHash(_allHashes, hash, deadline);
-        _addHash(_hashesOfMaker[maker], hash, deadline);
-        _addHash(_hashesOfFromToken[fromToken], hash, deadline);
-        _addHash(_hashesOfToToken[toToken], hash, deadline);
+        _addHash(_allHashes, hash, order.deadline);
+        _addHash(_hashesOfMaker[order.maker], hash, order.deadline);
+        _addHash(_hashesOfFromToken[order.fromToken], hash, order.deadline);
+        _addHash(_hashesOfToToken[order.toToken], hash, order.deadline);
 
         emit OrderCreated(hash);
     }

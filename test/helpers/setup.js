@@ -99,7 +99,7 @@ module.exports = async () => {
             deadline
         );
         const orderBook = await getContract("OrderBook", signer);
-        const tx = await orderBook.createOrder(...(await order.toArgs()));
+        const tx = await orderBook.createOrder(await order.toArgs());
 
         return { order, tx };
     };

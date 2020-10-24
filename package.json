@@ -1,8 +1,8 @@
 {
   "name": "@sushiswap/settlement",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "MIT",
-  "description": "Contracts that support limit orders feature for Sushiswap",
+  "description": "Contracts that support limit orders feature for SushiSwap",
   "files": [
     "contracts",
     "deployments"

@@ -1,6 +1,6 @@
-# Sushiswap Settlement
+# SushiSwap Settlement
 
-This repository contains solidity contracts to enable **limit orders** for Sushiswap.
+This repository contains solidity contracts to enable **limit orders** for SushiSwap.
 
 ## Overview
 
@@ -32,7 +32,7 @@ It is possible to fill only a certain amount of tokens, not all. In most cases, 
 ### Relayer
 `Settlement` is a wrapper contract around `UniswapV2Router02`. Every function in this contract has a duplicated version in the `Settlement` with an extra parameter `args`. If `args` is not empty, it is used for filling orders; see `Settlement.fillOrders()` for details.
 
-So, users for sushiswap can choose to be a relayer or not. If he/she decided to do so, calling any swap functions in `Settlement` will benefit them. Otherwise, he/she can just call functions in `UniswapV2Router02` without receiving any fee.
+So, users for SushiSwap can choose to be a relayer or not. If he/she decided to do so, calling any swap functions in `Settlement` will benefit them. Otherwise, he/she can just call functions in `UniswapV2Router02` without receiving any fee.
  
 ### Fee
 For every `fillOrder()` call, 0.2% of fee for the amount sold is transferred to the relayer. The fee is deducted prior to the swap.

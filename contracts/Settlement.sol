@@ -211,8 +211,9 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
         uint256 feeSplit = amountOfSushi.mul(feeSplitNumerator) / 10000;
         if (feeSplit > 0) {
-            TransferHelper.safeTransferFrom(fromToken, maker, feeSplitRecipient, feeSplit);
-            emit FeeSplitTransferred(hash, feeSplit);
+            address _recipient = feeSplitRecipient;
+            TransferHelper.safeTransferFrom(fromToken, maker, _recipient, feeSplit);
+            emit FeeSplitTransferred(hash, _recipient, feeSplit);
         }
         uint256 remainder = amountOfSushi.sub(feeSplit);
         TransferHelper.safeTransferFrom(fromToken, maker, msg.sender, remainder);

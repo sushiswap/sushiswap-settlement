@@ -9,7 +9,7 @@ interface ISettlement {
     event OrderFilled(bytes32 indexed hash, uint256 amountIn, uint256 amountOut);
     event OrderCanceled(bytes32 indexed hash);
     event FeeTransferred(bytes32 indexed hash, address indexed recipient, uint256 amount);
-    event FeeSplitTransferred(bytes32 indexed hash, uint256 amount);
+    event FeeSplitTransferred(bytes32 indexed hash, address indexed recipient, uint256 amount);
 
     struct FillOrderArgs {
         Orders.Order order;

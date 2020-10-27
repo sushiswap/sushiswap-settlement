@@ -49,7 +49,7 @@ describe("Settlement", function () {
         await deployments.fixture();
     });
 
-    it.only("Should fillOrder()", async () => {
+    it("Should fillOrder()", async () => {
         const {
             chainId,
             users,

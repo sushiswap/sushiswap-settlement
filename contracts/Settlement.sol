@@ -121,10 +121,10 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
+        // solhint-disable-next-line avoid-tx-origin
+        require(msg.sender == tx.origin, "cannot-called-by-contracts"); // voids flashloan attacks
+
         bytes32 hash = args.order.hash();
-        if (canceled[hash]) {
-            return 0;
-        }
         if (!_validateArgs(args, hash)) {
             return 0;
         }
@@ -132,7 +132,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             return 0;
         }
 
-        // Calculate fee deducted amountIn and amountOutMin
+        // calculates fee deducted amountIn and amountOutMin
         (uint256 amountIn, uint256 amountOutMin) = (
             args.amountToFillIn,
             args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
@@ -158,14 +158,14 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
                 _transferFees(args.order.fromToken, args.order.maker, fee, hash);
             }
 
-            // Update order status
+            // this line is free from reentrancy issues since UniswapV2Pair prevents from them
             filledAmountInOfHash[hash] = filledAmountInOfHash[hash].add(args.amountToFillIn);
 
             emit OrderFilled(hash, args.amountToFillIn, amountOut);
         }
     }
 
-    function _validateArgs(FillOrderArgs memory args, bytes32 hash) internal pure returns (bool) {
+    function _validateArgs(FillOrderArgs memory args, bytes32 hash) internal view returns (bool) {
         return
             args.order.maker != address(0) &&
             args.order.fromToken != address(0) &&
@@ -174,6 +174,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             args.order.amountIn != uint256(0) &&
             args.order.amountOutMin != uint256(0) &&
             args.order.deadline != uint256(0) &&
+            args.order.deadline >= block.timestamp &&
             args.amountToFillIn > 0 &&
             args.path.length >= 2 &&
             args.order.fromToken == args.path[0] &&
@@ -182,11 +183,10 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     function _validateStatus(FillOrderArgs memory args, bytes32 hash) internal view returns (bool) {
-        if (args.order.deadline < block.timestamp) {
+        if (canceled[hash]) {
             return false;
         }
-        uint256 filledAmountIn = filledAmountInOfHash[hash];
-        if (filledAmountIn.add(args.amountToFillIn) > args.order.amountIn) {
+        if (filledAmountInOfHash[hash].add(args.amountToFillIn) > args.order.amountIn) {
             return false;
         }
         return true;
@@ -198,7 +198,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         uint256 amount,
         bytes32 hash
     ) internal {
-        // if fromToken is WETH path is [fromToken, sushi], otherwise [fromToken, WETH, sushi]
+        // if fromToken is WETH then path is [fromToken, sushi], otherwise [fromToken, WETH, sushi]
         address _weth = WETH;
         address[] memory path = new address[](fromToken == _weth ? 2 : 3);
         path[path.length - 1] = sushi;

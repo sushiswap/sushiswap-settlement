@@ -25,9 +25,9 @@ const deployERC20 = async (create2, deployer, name, symbol, decimals) => {
 };
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
+    const { deployer } = await getNamedAccounts();
+    const { create2, execute } = deployments;
     if (buidlerArguments.network === "buidlerevm") {
-        const { deployer } = await getNamedAccounts();
-        const { create2, execute } = deployments;
         const { deploy } = await create2("WETH", {
             from: deployer,
             contract: WETH,
@@ -49,5 +49,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         // await deployERC20(create2, deployer, "Maker", "MKR", 18);
         // await deployERC20(create2, deployer, "OMG Network", "OMG", 18);
         // await deployERC20(create2, deployer, "BAT", "BAT", 18);
+    }
+    if (buidlerArguments.network !== "mainnet") {
+        await deployERC20(create2, deployer, "SushiToken", "SUSHI", 18);
     }
 };

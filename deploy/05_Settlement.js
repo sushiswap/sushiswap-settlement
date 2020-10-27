@@ -4,6 +4,7 @@ const { network } = buidlerArguments;
 const getFactoryAddress = require("../test/helpers/getFactoryAddress");
 
 const INIT_CODE_HASH = "e18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303";
+const SUSHI_BAR = "0x8798249c2E607446EfB7Ad49eC89dD1865Ff4272";
 
 const getWethAddress = async get => {
     if (network === "buidlerevm") {
@@ -11,6 +12,14 @@ const getWethAddress = async get => {
     } else {
         const { chainId } = await ethers.provider.getNetwork();
         return WETH[chainId].address;
+    }
+};
+
+const getSushiAddress = async get => {
+    if (network === "mainnet") {
+        return 0x6b3595068778dd592e39a122f4f5a5cf09c90fe2;
+    } else {
+        return (await get("SUSHI")).address;
     }
 };
 
@@ -50,8 +59,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             deployer,
             await getFactoryAddress(),
             await getWethAddress(get),
-            2,
-            1000
+            await getSushiAddress(get),
+            SUSHI_BAR,
+            20, // 0.2%
+            2000 // 20%
         );
     }
 };

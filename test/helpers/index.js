@@ -4,6 +4,7 @@ const increaseTime = require("./increaseTime");
 const getAddress = require("./getAddress");
 const getBalance = require("./getBalance");
 const getContract = require("./getContract");
+const getPair = require("./getPair");
 const expectToBeReverted = require("./expectToBeReverted");
 const expectToDeepEqual = require("./expectToDeepEqual");
 const expectToEqual = require("./expectToEqual");
@@ -20,6 +21,7 @@ module.exports = {
     getAddress,
     getBalance,
     getContract,
+    getPair,
     expectToBeReverted,
     expectToDeepEqual,
     expectToEqual,

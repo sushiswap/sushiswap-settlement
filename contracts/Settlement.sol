@@ -24,32 +24,44 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     mapping(address => bytes32[]) internal _canceledHashesOfFromToken;
     mapping(address => bytes32[]) internal _canceledHashesOfToToken;
     mapping(bytes32 => bool) public canceled;
-    uint256 public feeNumerator;
-    uint256 public feeDenominator;
     mapping(bytes32 => uint256) public filledAmountInOfHash;
+
+    address public sushi;
+
+    // this address receives (feeSplitNumerator / 10000) of fee for every order filling
+    address public feeSplitRecipient;
+
+    // denominator is 10000
+    uint256 public feeNumerator;
+
+    // out of fee, denominator is 10000
+    uint256 public feeSplitNumerator;
 
     function initialize(
         address owner,
         address _factory,
-        // solhint-disable-next-line var-name-mixedcase
-        address _WETH,
+        address _weth,
+        address _sushi,
+        address _feeSplitRecipient,
         uint256 _feeNumerator,
-        uint256 _feeDenominator
+        uint256 _feeSplitNumerator
     ) public {
         require(!_initialized, "already-initialized");
 
         Ownable._initialize(owner);
-        UniswapV2Router02Settlement._initialize(_factory, _WETH);
+        UniswapV2Router02Settlement._initialize(_factory, _weth);
 
+        sushi = _sushi;
+        feeSplitRecipient = _feeSplitRecipient;
         feeNumerator = _feeNumerator;
-        feeDenominator = _feeDenominator;
+        feeSplitNumerator = _feeSplitNumerator;
 
         _initialized = true;
     }
 
-    function updateFee(uint256 _feeNumerator, uint256 _feeDenominator) public onlyOwner {
+    function updateFee(uint256 _feeNumerator, uint256 _feeSplitNumerator) public onlyOwner {
         feeNumerator = _feeNumerator;
-        feeDenominator = _feeDenominator;
+        feeSplitNumerator = _feeSplitNumerator;
     }
 
     function numberOfCanceledHashesOfMaker(address maker) public view returns (uint256) {
@@ -125,10 +137,11 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             args.amountToFillIn,
             args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
         );
-        (uint256 numerator, uint256 denominator) = (feeNumerator, feeDenominator);
-        if (numerator > 0 && denominator > 0) {
-            amountIn = amountIn.sub(amountIn.mul(numerator) / denominator);
-            amountOutMin = amountOutMin.sub(amountOutMin.mul(numerator) / denominator);
+        uint256 _feeNumerator = feeNumerator;
+        uint256 fee = amountIn.mul(_feeNumerator) / 10000;
+        if (fee > 0) {
+            amountIn = amountIn.sub(fee);
+            amountOutMin = amountOutMin.sub(amountOutMin.mul(_feeNumerator) / 10000);
         }
 
         // requires args.amountToFillIn to have already been approved to this
@@ -141,17 +154,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         );
 
         if (amountOut > 0) {
-            // Transfer fee if any
-            if (args.amountToFillIn > amountIn) {
-                uint256 fee = args.amountToFillIn.sub(amountIn);
-                TransferHelper.safeTransferFrom(
-                    args.order.fromToken,
-                    args.order.maker,
-                    msg.sender,
-                    fee
-                );
-
-                emit OrderFeeTransferred(hash, msg.sender, fee);
+            if (fee > 0) {
+                _transferFees(args.order.fromToken, args.order.maker, fee, hash);
             }
 
             // Update order status
@@ -188,6 +192,33 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         return true;
     }
 
+    function _transferFees(
+        address fromToken,
+        address maker,
+        uint256 amount,
+        bytes32 hash
+    ) internal {
+        // if fromToken is WETH path is [fromToken, sushi], otherwise [fromToken, WETH, sushi]
+        address _weth = WETH;
+        address[] memory path = new address[](fromToken == _weth ? 2 : 3);
+        path[path.length - 1] = sushi;
+        path[path.length - 2] = _weth;
+        if (fromToken != _weth) {
+            path[0] = fromToken;
+        }
+        uint256 amountOfSushi = _swapExactTokensForTokens(maker, amount, 0, path, address(this));
+        require(amountOfSushi > 0, "swap-to-sushi-failure");
+
+        uint256 feeSplit = amountOfSushi.mul(feeSplitNumerator) / 10000;
+        if (feeSplit > 0) {
+            TransferHelper.safeTransferFrom(fromToken, maker, feeSplitRecipient, feeSplit);
+            emit FeeSplitTransferred(hash, feeSplit);
+        }
+        uint256 remainder = amountOfSushi.sub(feeSplit);
+        TransferHelper.safeTransferFrom(fromToken, maker, msg.sender, remainder);
+        emit FeeTransferred(hash, msg.sender, remainder);
+    }
+
     function _swapExactTokensForTokens(
         address from,
         uint256 amountIn,
@@ -214,10 +245,15 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         override
         returns (uint256[] memory amountsOut)
     {
+        bool filled = false;
         amountsOut = new uint256[](args.length);
         for (uint256 i = 0; i < args.length; i++) {
             amountsOut[i] = fillOrder(args[i]);
+            if (amountsOut[i] > 0) {
+                filled = true;
+            }
         }
+        require(filled, "no-order-filled");
     }
 
     function cancelOrder(Orders.Order memory order) public override {

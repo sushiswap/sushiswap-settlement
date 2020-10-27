@@ -1,5 +1,5 @@
 const { ethers, deployments } = require("@nomiclabs/buidler");
-const { WETH, DAI } = require("./tokens");
+const { WETH, DAI, SUSHI } = require("./tokens");
 const helpers = require("./helpers");
 
 const createAndCancel10Orders = async (fromToken, toToken) => {
@@ -49,7 +49,7 @@ describe("Settlement", function () {
         await deployments.fixture();
     });
 
-    it("Should fillOrder()", async () => {
+    it.only("Should fillOrder()", async () => {
         const {
             chainId,
             users,
@@ -63,6 +63,15 @@ describe("Settlement", function () {
         const settlement = await helpers.getContract("Settlement");
         const fromToken = WETH[chainId];
         const toToken = DAI[chainId];
+
+        // setup SUSHI-WETH pool for fee swapping
+        await addLiquidity(
+            users[0],
+            WETH[chainId],
+            SUSHI[chainId],
+            ethers.constants.WeiPerEther.mul(1),
+            ethers.constants.WeiPerEther.mul(100)
+        );
 
         // Set ratio of WETH:DAI to 1:100
         await addLiquidity(
@@ -108,11 +117,17 @@ describe("Settlement", function () {
         await helpers.expectToEqual(filled.amountIn, amountIn);
         await helpers.expectToEqual(amountIn, filledAmountIn(users[1], order));
 
-        // The relayer should have received a fee
-        const fee = amountIn
-            .mul(await settlement.feeNumerator())
-            .div(await settlement.feeDenominator());
-        await helpers.expectToEqual(fee, fromERC20.balanceOf(users[1]._address));
+        // The relayer and feeSplitRecipient should have received fees
+        const address = await helpers.getPair(WETH[chainId], SUSHI[chainId]);
+        const pair = await ethers.getContractAt("IUniswapV2Pair", address);
+        const events = await pair.queryFilter(pair.filters.Swap());
+        const fee = events[events.length - 1].args.amount1Out;
+        const feeSplit = fee.mul(await settlement.feeSplitNumerator()).div(10000);
+        await helpers.expectToEqual(
+            feeSplit,
+            fromERC20.balanceOf(await settlement.feeSplitRecipient())
+        );
+        await helpers.expectToEqual(fee.sub(feeSplit), fromERC20.balanceOf(users[1]._address));
     });
 
     it("Should revert cancelOrder() if order is invalid", async () => {

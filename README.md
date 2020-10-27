@@ -13,14 +13,14 @@ Contracts in this repo help you submit a limit order with a lower price than wha
 Limit orders on SushiSwap work in a completely decentralized manner, without the need of any centralized authority. The system consists of two contracts: OrderBook and Settlement.
 
 ### OrderBook
-`OrderBook` is deployed at `0xc425f76fa58d92e8732d48ab61ef494c73561d96` on kovan and rinkeby testnets.
+`OrderBook` is deployed at `0xa90867f6fa773fe470c2fb5491904b6e6773e1f1` on kovan and rinkeby testnets.
 
 `OrderBook` keeps limit orders that users have submitted. Anyone can call `createOrder()` to create a limit order with the amount to sell and the minimum price. He/she needs to approve the amount to sell for the `Settlement` contract.
 
 To reduce users' gas fee, OrderBook isn't deployed on the mainnet. The one on **kovan** testnet is used for production.
 
 ### Settlement
-`Settlement` is deployed at `0x82b9d42b2779af7a40c93ac0df2ba76ffc5fbbc8` on the Ethereum mainnet, kovan and rinkeby testnets.
+`Settlement` is deployed at `0x12f890d23d926bc1781ce6f7ccb400bef1b1bae4` on the Ethereum mainnet, kovan and rinkeby testnets.
 
 `Settlement` is in charge of swapping tokens for orders. Anyone can call `fillOrder()` to fill the order submitted. We'll call this caller a 'relayer'. Relayers need to call it with proper parameters to meet the minimum price requirement set in the order. If the call is successful, fee will be transferred to the relayer.
 

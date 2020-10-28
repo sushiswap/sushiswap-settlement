@@ -14,28 +14,38 @@ contract OrderBook {
 
     event OrderCreated(bytes32 indexed hash);
 
+    // Array of hashes of all orders
     bytes32[] internal _allHashes;
+    // Address of order maker => hashes (orders)
     mapping(address => bytes32[]) internal _hashesOfMaker;
+    // Address of fromToken => hashes (orders)
     mapping(address => bytes32[]) internal _hashesOfFromToken;
+    // Address of toToken => hashes (orders)
     mapping(address => bytes32[]) internal _hashesOfToToken;
+    // Hash of an order => the order and its data
     mapping(bytes32 => Orders.Order) public orderOfHash;
 
+    // Returns the number of orders of a maker
     function numberOfHashesOfMaker(address maker) public view returns (uint256) {
         return _hashesOfMaker[maker].length;
     }
 
+    // Return the number of orders where fromToken is the origin token
     function numberOfHashesOfFromToken(address fromToken) public view returns (uint256) {
         return _hashesOfFromToken[fromToken].length;
     }
 
+    // Return the number of orders where toToken is the target token
     function numberOfHashesOfToToken(address toToken) public view returns (uint256) {
         return _hashesOfToToken[toToken].length;
     }
 
+    // Returns the number of all orders
     function numberOfAllHashes() public view returns (uint256) {
         return _allHashes.length;
     }
 
+    // Returns an array of hashes of orders of a maker
     function hashesOfMaker(
         address maker,
         uint256 page,
@@ -43,7 +53,8 @@ contract OrderBook {
     ) public view returns (bytes32[] memory) {
         return _hashesOfMaker[maker].paginate(page, limit);
     }
-
+    
+    // Returns an array of hashes of orders where fromToken is the origin token
     function hashesOfFromToken(
         address fromToken,
         uint256 page,
@@ -52,6 +63,7 @@ contract OrderBook {
         return _hashesOfFromToken[fromToken].paginate(page, limit);
     }
 
+    // Returns an array of hashes of orders where toToken is the target token
     function hashesOfToToken(
         address toToken,
         uint256 page,
@@ -60,10 +72,12 @@ contract OrderBook {
         return _hashesOfToToken[toToken].paginate(page, limit);
     }
 
+    // Return an array of all hashes
     function allHashes(uint256 page, uint256 limit) public view returns (bytes32[] memory) {
         return _allHashes.paginate(page, limit);
     }
 
+    // Creates an order
     function createOrder(Orders.Order memory order) public {
         require(order.maker != address(0), "invalid-maker-address");
         require(order.fromToken != address(0), "invalid-from-token-address");
@@ -104,29 +118,35 @@ contract OrderBook {
         bytes32 hash,
         uint256 deadline
     ) internal {
-        // hashes are ordered by deadline increasingly
+        // Hashes are ordered by deadline increasingly
+        // If there are no hashes in the map yet
         if (hashes.length == 0) {
             hashes.push(hash);
             return;
         }
         uint256 index = uint256(-1);
+        // Go through all hashes until you find an order with an earlier deadline
         for (uint256 i = 0; i < hashes.length; i++) {
             if (orderOfHash[hashes[i]].deadline > deadline) {
                 index = i;
                 break;
             }
         }
+        // If it's the "longest" deadline, just put it at the end of the map
         if (index == uint256(-1)) {
             hashes.push(hash);
             return;
         }
         hashes.push();
+        // Create an opening for the order where it belongs
         for (uint256 i = hashes.length - 1; i > index; i--) {
             hashes[i] = hashes[i - 1];
         }
+        // Fit there order in the opening
         hashes[index] = hash;
     }
 
+    // Returns the hash of the input arguments (which make an order)
     function createOrderCallHash(
         address maker,
         address fromToken,

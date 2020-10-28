@@ -123,11 +123,13 @@ describe("Settlement", function () {
         const events = await pair.queryFilter(pair.filters.Swap());
         const fee = events[events.length - 1].args.amount1Out;
         const feeSplit = fee.mul(await settlement.feeSplitNumerator()).div(10000);
+
+        const sushi = await helpers.getContract("SUSHI");
         await helpers.expectToEqual(
             feeSplit,
-            fromERC20.balanceOf(await settlement.feeSplitRecipient())
+            sushi.balanceOf(await settlement.feeSplitRecipient())
         );
-        await helpers.expectToEqual(fee.sub(feeSplit), fromERC20.balanceOf(users[1]._address));
+        await helpers.expectToEqual(fee.sub(feeSplit), sushi.balanceOf(users[1]._address));
     });
 
     it("Should revert cancelOrder() if order is invalid", async () => {

@@ -23,7 +23,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     mapping(address => bytes32[]) internal _canceledHashesOfMaker;
     mapping(address => bytes32[]) internal _canceledHashesOfFromToken;
     mapping(address => bytes32[]) internal _canceledHashesOfToToken;
-    mapping(bytes32 => bool) public canceled;
+    mapping(bytes32 => bool) public canceledOfHash;
     mapping(bytes32 => uint256) public filledAmountInOfHash;
 
     address public sushi;
@@ -122,7 +122,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
         // solhint-disable-next-line avoid-tx-origin
-        require(msg.sender == tx.origin, "cannot-called-by-contracts"); // voids flashloan attacks
+        require(msg.sender == tx.origin, "called-by-contract"); // voids flashloan attack vectors
 
         bytes32 hash = args.order.hash();
         if (!_validateArgs(args, hash)) {
@@ -183,7 +183,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     function _validateStatus(FillOrderArgs memory args, bytes32 hash) internal view returns (bool) {
-        if (canceled[hash]) {
+        if (canceledOfHash[hash]) {
             return false;
         }
         if (filledAmountInOfHash[hash].add(args.amountToFillIn) > args.order.amountIn) {
@@ -259,14 +259,15 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
     function cancelOrder(Orders.Order memory order) public override {
         bytes32 hash = order.hash();
-        require(Verifier.verify(order.maker, hash, order.v, order.r, order.s), "invalid-order");
+        // it's not required to verify the signature of the order
+        // without considering the possibility of hash collision
         require(msg.sender == order.maker, "not-called-by-maker");
 
         _allCanceledHashes.push(hash);
         _canceledHashesOfMaker[order.maker].push(hash);
         _canceledHashesOfFromToken[order.fromToken].push(hash);
         _canceledHashesOfToToken[order.toToken].push(hash);
-        canceled[hash] = true;
+        canceledOfHash[hash] = true;
 
         emit OrderCanceled(hash);
     }

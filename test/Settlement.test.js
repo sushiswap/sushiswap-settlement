@@ -132,41 +132,6 @@ describe("Settlement", function () {
         await helpers.expectToEqual(fee.sub(feeSplit), sushi.balanceOf(users[1]._address));
     });
 
-    it("Should revert cancelOrder() if order is invalid", async () => {
-        const { chainId, users, createOrder } = await helpers.setup();
-
-        // Create an order from user0
-        const { order } = await createOrder(
-            users[0],
-            WETH[chainId],
-            DAI[chainId],
-            ethers.constants.WeiPerEther,
-            ethers.constants.WeiPerEther.mul(101),
-            ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 3600 + Math.random() * 3600))
-        );
-
-        await helpers.expectToBeReverted("invalid-order", async () => {
-            // Cancel order from user1
-            const settlement = await helpers.getContract("Settlement", users[1]);
-            const hash = await order.hash();
-            const signature = await users[1].signMessage(ethers.utils.arrayify(hash));
-            const { v, r, s } = ethers.utils.splitSignature(signature);
-            const args = [
-                order.maker._address,
-                order.fromToken.address,
-                order.toToken.address,
-                order.amountIn,
-                order.amountOutMin,
-                order.recipient,
-                order.deadline,
-                v,
-                r,
-                s,
-            ];
-            return await settlement.cancelOrder(args);
-        });
-    });
-
     it("Should revert cancelOrder() if not called by maker", async () => {
         const { chainId, users, createOrder, cancelOrder } = await helpers.setup();
 

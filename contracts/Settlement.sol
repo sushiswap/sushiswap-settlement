@@ -178,7 +178,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
         if (amountOut > 0) {
             if (fee > 0) {
-                _transferFees(args.order.from=Token, args.order.maker, fee, hash);
+                _transferFees(args.order.fromToken, args.order.maker, fee, hash);
             }
 
             // This line is free from reentrancy issues since UniswapV2Pair prevents from them
@@ -259,12 +259,12 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         if (amounts[amounts.length - 1] < amountOutMin) {
             return 0;
         }
-        address pair = UniswapV2Library.pairFor(factory, path[0], path[1]);
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, ) = path[0].call(abi.encodeWithSelector(0x23b872dd, from, pair, amountIn));
-        if (!success) {
-            return 0;
-        }
+        TransferHelper.safeTransferFrom(
+            path[0],
+            from,
+            UniswapV2Library.pairFor(factory, path[0], path[1]),
+            amountIn
+        );
         _swap(amounts, path, to);
         amountOut = amounts[amounts.length - 1];
     }

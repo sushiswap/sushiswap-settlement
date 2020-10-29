@@ -23,5 +23,13 @@ interface ISettlement {
         external
         returns (uint256[] memory amountsOut);
 
-    function cancelOrder(Orders.Order calldata order) external;
+    function cancelOrder(
+        address maker,
+        address fromToken,
+        address toToken,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address recipient,
+        uint256 deadline
+    ) external;
 }

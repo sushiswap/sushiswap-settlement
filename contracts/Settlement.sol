@@ -289,16 +289,32 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     // Cancels an order, has to been called by order maker
-    function cancelOrder(Orders.Order memory order) public override {
-        bytes32 hash = order.hash();
-        // it's not required to verify the signature of the order
+    function cancelOrder(
+        address maker,
+        address fromToken,
+        address toToken,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address recipient,
+        uint256 deadline
+    ) public override {
+        bytes32 hash = Orders.hash(
+            maker,
+            fromToken,
+            toToken,
+            amountIn,
+            amountOutMin,
+            recipient,
+            deadline
+        );
+        // It's not required to verify the signature of the order
         // without considering the possibility of hash collision
-        require(msg.sender == order.maker, "not-called-by-maker");
+        require(msg.sender == maker, "not-called-by-maker");
 
         _allCanceledHashes.push(hash);
-        _canceledHashesOfMaker[order.maker].push(hash);
-        _canceledHashesOfFromToken[order.fromToken].push(hash);
-        _canceledHashesOfToToken[order.toToken].push(hash);
+        _canceledHashesOfMaker[maker].push(hash);
+        _canceledHashesOfFromToken[fromToken].push(hash);
+        _canceledHashesOfToToken[toToken].push(hash);
         canceledOfHash[hash] = true;
 
         emit OrderCanceled(hash);

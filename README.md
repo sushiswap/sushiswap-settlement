@@ -46,5 +46,11 @@ If the call is successful, amounts of tokens transferred are:
 * ETH Amount Sold: **1 ETH** - **0.002 ETH** - **0.002994 ETH** = **0.995006 ETH** (goes to the liquidity pool)
 * DAI Amount Bought: **0.995006 ETH** x **500 DAI** = **497.503 DAI** (goes to *Alice*; maker)
 
+## Audits
+This repository has been audited by Quantstamp and Peckshield.
+* [Quatstamp Audit Report](https://gist.github.com/RideSolo/0ab28f3be1d981114d5727cafd6c7afc)
+* [Peckshield Audit Report](audits/PeckShield-Audit-BentoBox-v1.0.pdf)
+
+
 ## License
 MIT

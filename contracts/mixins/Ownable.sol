@@ -2,7 +2,7 @@
 // solhint-disable-next-line max-line-length
 // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol
 
-pragma solidity ^0.6.8;
+pragma solidity =0.6.12;
 
 abstract contract Ownable {
     address private _owner;

@@ -8,7 +8,7 @@ import "@sushiswap/core/contracts/uniswapv2/libraries/TransferHelper.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IMintable.sol";
-import "./libraries/Verifier.sol";
+import "./libraries/EIP712.sol";
 import "./libraries/Bytes32Pagination.sol";
 import "./mixins/Ownable.sol";
 import "./UniswapV2Router02Settlement.sol";
@@ -17,6 +17,9 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
     using Bytes32Pagination for bytes32[];
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 public DOMAIN_SEPARATOR;
 
     bool private _initialized;
     // Array of hashes of all canceled orders
@@ -47,6 +50,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     uint256 public feeSplitNumerator;
 
     function initialize(
+        // solhint-disable-next-line var-name-mixedcase
+        bytes32 _DOMAIN_SEPARATOR,
         address owner,
         address _factory,
         address _weth,
@@ -56,6 +61,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         uint256 _feeSplitNumerator
     ) public {
         require(!_initialized, "already-initialized");
+
+        DOMAIN_SEPARATOR = _DOMAIN_SEPARATOR;
 
         Ownable._initialize(owner);
         UniswapV2Router02Settlement._initialize(_factory, _weth);
@@ -126,28 +133,19 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         return _allCanceledHashes.paginate(page, limit);
     }
 
-    // Returns the hash of the input arguments (which make an order)
-    function hashOfOrder(
-        address maker,
-        address fromToken,
-        address toToken,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address recipient,
-        uint256 deadline
-    ) public pure returns (bytes32) {
-        return Orders.hash(maker, fromToken, toToken, amountIn, amountOutMin, recipient, deadline);
-    }
-
     // Fills an order
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
         // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "called-by-contract"); // voids flashloan attack vectors
 
-        // Hash of the order
+        // Check if the signature is valid
         bytes32 hash = args.order.hash();
+        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, args.order.v, args.order.r, args.order.s);
+        if (signer == address(0) || signer != args.order.maker) {
+            return 0;
+        }
         // Check if the order is valid
-        if (!_validateArgs(args, hash)) {
+        if (!_validateArgs(args)) {
             return 0;
         }
         // Check if the order is canceled / already fully filled
@@ -189,7 +187,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     // Checks if an order is valid - if it contains all the information required
-    function _validateArgs(FillOrderArgs memory args, bytes32 hash) internal view returns (bool) {
+    function _validateArgs(FillOrderArgs memory args) internal view returns (bool) {
         return
             args.order.maker != address(0) &&
             args.order.fromToken != address(0) &&
@@ -202,8 +200,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             args.amountToFillIn > 0 &&
             args.path.length >= 2 &&
             args.order.fromToken == args.path[0] &&
-            args.order.toToken == args.path[args.path.length - 1] &&
-            Verifier.verify(args.order.maker, hash, args.order.v, args.order.r, args.order.s);
+            args.order.toToken == args.path[args.path.length - 1];
     }
 
     // Checks if an order is canceled / already fully filled
@@ -259,22 +256,13 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         if (amounts[amounts.length - 1] < amountOutMin) {
             return 0;
         }
-        TransferHelper.safeTransferFrom(
-            path[0],
-            from,
-            UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amountIn
-        );
+        TransferHelper.safeTransferFrom(path[0], from, UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn);
         _swap(amounts, path, to);
         amountOut = amounts[amounts.length - 1];
     }
 
     // Fills multiple orders passed as an array
-    function fillOrders(FillOrderArgs[] memory args)
-        public
-        override
-        returns (uint256[] memory amountsOut)
-    {
+    function fillOrders(FillOrderArgs[] memory args) public override returns (uint256[] memory amountsOut) {
         bool filled = false;
         amountsOut = new uint256[](args.length);
         for (uint256 i = 0; i < args.length; i++) {
@@ -289,32 +277,18 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     }
 
     // Cancels an order, has to been called by order maker
-    function cancelOrder(
-        address maker,
-        address fromToken,
-        address toToken,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address recipient,
-        uint256 deadline
-    ) public override {
-        bytes32 hash = Orders.hash(
-            maker,
-            fromToken,
-            toToken,
-            amountIn,
-            amountOutMin,
-            recipient,
-            deadline
-        );
-        // It's not required to verify the signature of the order
-        // without considering the possibility of hash collision
-        require(msg.sender == maker, "not-called-by-maker");
+    function cancelOrder(Orders.Order memory order) public override {
+        require(msg.sender == order.maker, "not-called-by-maker");
+
+        bytes32 hash = order.hash();
+        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, order.v, order.r, order.s);
+        require(signer != address(0) && signer == order.maker, "invalid-signature");
+        require(!canceledOfHash[hash], "already-canceled");
 
         _allCanceledHashes.push(hash);
-        _canceledHashesOfMaker[maker].push(hash);
-        _canceledHashesOfFromToken[fromToken].push(hash);
-        _canceledHashesOfToToken[toToken].push(hash);
+        _canceledHashesOfMaker[order.maker].push(hash);
+        _canceledHashesOfFromToken[order.fromToken].push(hash);
+        _canceledHashesOfToToken[order.toToken].push(hash);
         canceledOfHash[hash] = true;
 
         emit OrderCanceled(hash);

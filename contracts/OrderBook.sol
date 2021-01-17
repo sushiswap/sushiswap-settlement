@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
 import "./libraries/Orders.sol";
-import "./libraries/Verifier.sol";
+import "./libraries/EIP712.sol";
 import "./libraries/Bytes32Pagination.sol";
 
 contract OrderBook {
@@ -13,6 +13,11 @@ contract OrderBook {
     using Bytes32Pagination for bytes32[];
 
     event OrderCreated(bytes32 indexed hash);
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 public DOMAIN_SEPARATOR;
+    // keccak256("Order(address maker,address fromToken,address toToken,uint256 amountIn,uint256 amountOutMin,address recipient,uint256 deadline)");
+    bytes32 public constant ORDER_TYPEHASH = 0x7c228c78bd055996a44b5046fb56fa7c28c66bce92d9dc584f742b2cd76a140f;
 
     // Array of hashes of all orders
     bytes32[] internal _allHashes;
@@ -24,6 +29,22 @@ contract OrderBook {
     mapping(address => bytes32[]) internal _hashesOfToToken;
     // Hash of an order => the order and its data
     mapping(bytes32 => Orders.Order) public orderOfHash;
+
+    constructor() public {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("OrderBook")),
+                keccak256(bytes("1")),
+                chainId,
+                address(this)
+            )
+        );
+    }
 
     // Returns the number of orders of a maker
     function numberOfHashesOfMaker(address maker) public view returns (uint256) {
@@ -53,7 +74,7 @@ contract OrderBook {
     ) public view returns (bytes32[] memory) {
         return _hashesOfMaker[maker].paginate(page, limit);
     }
-    
+
     // Returns an array of hashes of orders where fromToken is the origin token
     function hashesOfFromToken(
         address fromToken,
@@ -88,19 +109,9 @@ contract OrderBook {
         require(order.recipient != address(0), "invalid-recipient");
         require(order.deadline > block.timestamp, "invalid-deadline");
 
-        bytes32 hash = createOrderCallHash(
-            order.maker,
-            order.fromToken,
-            order.toToken,
-            order.amountIn,
-            order.amountOutMin,
-            order.recipient,
-            order.deadline
-        );
-        require(
-            Verifier.verify(order.maker, hash, order.v, order.r, order.s),
-            "not-signed-by-maker"
-        );
+        bytes32 hash = order.hash();
+        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, order.v, order.r, order.s);
+        require(signer != address(0) && signer == order.maker, "invalid-signature");
 
         require(orderOfHash[hash].maker == address(0), "order-exists");
         orderOfHash[hash] = order;
@@ -144,18 +155,5 @@ contract OrderBook {
         }
         // Fit there order in the opening
         hashes[index] = hash;
-    }
-
-    // Returns the hash of the input arguments (which make an order)
-    function createOrderCallHash(
-        address maker,
-        address fromToken,
-        address toToken,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address recipient,
-        uint256 deadline
-    ) public pure returns (bytes32) {
-        return Orders.hash(maker, fromToken, toToken, amountIn, amountOutMin, recipient, deadline);
     }
 }

@@ -3,10 +3,8 @@
 pragma solidity =0.6.12;
 
 library Orders {
-    bytes32 internal constant ORDER_TYPEHASH = keccak256(
-        // solhint-disable-next-line
-        "Order(address maker,address fromToken,address toToken,address amountIn,address amountOutMin,address recipient,address deadline)"
-    );
+    // keccak256("Order(address maker,address fromToken,address toToken,address amountIn,address amountOutMin,address recipient,address deadline)")
+    bytes32 public constant ORDER_TYPEHASH = 0x7c228c78bd055996a44b5046fb56fa7c28c66bce92d9dc584f742b2cd76a140f;
 
     struct Order {
         address maker;
@@ -23,37 +21,16 @@ library Orders {
 
     function hash(Order memory order) internal pure returns (bytes32) {
         return
-            hash(
-                order.maker,
-                order.fromToken,
-                order.toToken,
-                order.amountIn,
-                order.amountOutMin,
-                order.recipient,
-                order.deadline
-            );
-    }
-
-    function hash(
-        address maker,
-        address fromToken,
-        address toToken,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address recipient,
-        uint256 deadline
-    ) internal pure returns (bytes32) {
-        return
             keccak256(
                 abi.encodePacked(
                     ORDER_TYPEHASH,
-                    maker,
-                    fromToken,
-                    toToken,
-                    amountIn,
-                    amountOutMin,
-                    recipient,
-                    deadline
+                    order.maker,
+                    order.fromToken,
+                    order.toToken,
+                    order.amountIn,
+                    order.amountOutMin,
+                    order.recipient,
+                    order.deadline
                 )
             );
     }

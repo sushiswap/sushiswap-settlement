@@ -5,8 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/libraries/SafeMath.sol";
 import "@sushiswap/core/contracts/uniswapv2/libraries/TransferHelper.sol";
-import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
-import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
+import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
 import "./interfaces/IMintable.sol";
 import "./libraries/EIP712.sol";
 import "./libraries/Bytes32Pagination.sol";
@@ -138,6 +137,11 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "called-by-contract"); // voids flashloan attack vectors
 
+        // Check the approved amount from maker
+        uint256 allowance = IERC20Uniswap(args.order.fromToken).allowance(args.order.maker, address(this));
+        if (allowance < args.amountToFillIn) {
+            return 0;
+        }
         // Check if the signature is valid
         bytes32 hash = args.order.hash();
         address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, args.order.v, args.order.r, args.order.s);

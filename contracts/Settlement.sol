@@ -209,6 +209,7 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
             args.order.fromToken != args.order.toToken &&
             args.order.amountIn != uint256(0) &&
             args.order.amountOutMin != uint256(0) &&
+            args.order.recipient != address(0) &&
             args.order.deadline != uint256(0) &&
             args.order.deadline >= block.timestamp &&
             args.amountToFillIn > 0 &&

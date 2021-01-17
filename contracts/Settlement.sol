@@ -17,6 +17,10 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     using Orders for Orders.Order;
     using Bytes32Pagination for bytes32[];
 
+    // Maximum fee= 1%
+    uint256 public constant MAX_FEE_NUMERATOR = 100;
+    // Maximum fee split = 50%
+    uint256 public constant MAX_FEE_SPLIT_NUMERATOR = 5000;
     // solhint-disable-next-line var-name-mixedcase
     bytes32 public DOMAIN_SEPARATOR;
 
@@ -74,9 +78,15 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         _initialized = true;
     }
 
-    // Updates the fee amount and it's split ratio between the relayer and feeSplitRecipient
-    function updateFee(uint256 _feeNumerator, uint256 _feeSplitNumerator) public onlyOwner {
+    // Updates the fee amount
+    function updateFee(uint256 _feeNumerator) public onlyOwner {
+        require(_feeNumerator < MAX_FEE_NUMERATOR, "fee-too-high");
         feeNumerator = _feeNumerator;
+    }
+
+    // Updates the fee's split ratio between the relayer and feeSplitRecipient
+    function updateFeeSplit(uint256 _feeSplitNumerator) public onlyOwner {
+        require(_feeSplitNumerator < MAX_FEE_SPLIT_NUMERATOR, "fee-split-too-high");
         feeSplitNumerator = _feeSplitNumerator;
     }
 

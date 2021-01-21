@@ -54,7 +54,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             from: deployer,
             log: true,
         });
-        const chainId = Number(await ethereum.send("eth_chainId", []));
+        const chainId = network === "mainnet" ? 42 : Number(await ethereum.send("eth_chainId", []));
         await execute(
             "Settlement",
             {

@@ -1,4 +1,4 @@
-const { buidlerArguments, ethers } = require("@nomiclabs/buidler");
+const { buidlerArguments, ethers, ethereum } = require("@nomiclabs/buidler");
 const { WETH } = require("@sushiswap/sdk");
 const { network } = buidlerArguments;
 const getFactoryAddress = require("../test/helpers/getFactoryAddress");
@@ -54,12 +54,14 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             from: deployer,
             log: true,
         });
+        const chainId = Number(await ethereum.send("eth_chainId", []));
         await execute(
             "Settlement",
             {
                 from: deployer,
             },
             "initialize",
+            chainId,
             orderBook,
             network === "mainnet" ? MULTISIG : deployer,
             await getFactoryAddress(),

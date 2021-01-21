@@ -15,7 +15,7 @@ contract OrderBook {
     event OrderCreated(bytes32 indexed hash);
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 public immutable DOMAIN_SEPARATOR;
 
     // Array of hashes of all orders
     bytes32[] internal _allHashes;
@@ -29,12 +29,16 @@ contract OrderBook {
     mapping(bytes32 => Orders.Order) public orderOfHash;
 
     constructor() public {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256("OrderBook"),
                 keccak256("1"),
-                uint256(42), // fixed to kovan
+                chainId,
                 address(this)
             )
         );

@@ -1,4 +1,4 @@
-const { ethers, deployments, getNamedAccounts } = require("@nomiclabs/buidler");
+const { ethers, ethereum, deployments, getNamedAccounts } = require("@nomiclabs/buidler");
 const { _TypedDataEncoder } = require("@ethersproject/hash");
 
 class Order {
@@ -55,10 +55,11 @@ class Order {
             from: deployer,
             log: true,
         });
+        const chainId = Number(await ethereum.send("eth_chainId", []));
         const domain = {
             name: "OrderBook",
             version: "1",
-            chainId: 42, // kovan
+            chainId,
             verifyingContract: address,
         };
         const types = {

@@ -53,8 +53,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     uint256 public feeSplitNumerator;
 
     function initialize(
-    // solhint-disable-next-line var-name-mixedcase
-        address orderBook,
+        uint256 orderBookChainId,
+        address orderBookAddress,
         address owner,
         address _factory,
         address _weth,
@@ -70,8 +70,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256("OrderBook"),
                 keccak256("1"),
-                uint256(42), // fixed to kovan
-                orderBook
+                orderBookChainId,
+                orderBookAddress
             )
         );
 

@@ -3,7 +3,7 @@
 pragma solidity =0.6.12;
 
 library Orders {
-    // keccak256("Order(address maker,address fromToken,address toToken,address amountIn,address amountOutMin,address recipient,address deadline)")
+    // keccak256("Order(address maker,address fromToken,address toToken,uint256 amountIn,uint256 amountOutMin,address recipient,uint256 deadline)")
     bytes32 public constant ORDER_TYPEHASH = 0x7c228c78bd055996a44b5046fb56fa7c28c66bce92d9dc584f742b2cd76a140f;
 
     struct Order {
@@ -22,7 +22,7 @@ library Orders {
     function hash(Order memory order) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     ORDER_TYPEHASH,
                     order.maker,
                     order.fromToken,

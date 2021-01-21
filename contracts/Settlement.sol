@@ -53,8 +53,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     uint256 public feeSplitNumerator;
 
     function initialize(
-        // solhint-disable-next-line var-name-mixedcase
-        bytes32 _DOMAIN_SEPARATOR,
+    // solhint-disable-next-line var-name-mixedcase
+        address orderBook,
         address owner,
         address _factory,
         address _weth,
@@ -65,7 +65,15 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     ) public {
         require(!_initialized, "already-initialized");
 
-        DOMAIN_SEPARATOR = _DOMAIN_SEPARATOR;
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("OrderBook"),
+                keccak256("1"),
+                uint256(42), // fixed to kovan
+                orderBook
+            )
+        );
 
         Ownable._initialize(owner);
         UniswapV2Router02Settlement._initialize(_factory, _weth);
@@ -145,7 +153,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     // Fills an order
     function fillOrder(FillOrderArgs memory args) public override returns (uint256 amountOut) {
         // solhint-disable-next-line avoid-tx-origin
-        require(msg.sender == tx.origin, "called-by-contract"); // voids flashloan attack vectors
+        require(msg.sender == tx.origin, "called-by-contract");
+        // voids flashloan attack vectors
 
         // Check the approved amount from maker
         uint256 allowance = IERC20Uniswap(args.order.fromToken).allowance(args.order.maker, address(this));
@@ -169,8 +178,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
         // Calculates fee deducted amountIn and amountOutMin
         (uint256 amountIn, uint256 amountOutMin) = (
-            args.amountToFillIn,
-            args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
+        args.amountToFillIn,
+        args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
         );
         uint256 _feeNumerator = feeNumerator;
         uint256 fee = amountIn.mul(_feeNumerator) / 10000;
@@ -203,19 +212,19 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     // Checks if an order is valid - if it contains all the information required
     function _validateArgs(FillOrderArgs memory args) internal view returns (bool) {
         return
-            args.order.maker != address(0) &&
-            args.order.fromToken != address(0) &&
-            args.order.toToken != address(0) &&
-            args.order.fromToken != args.order.toToken &&
-            args.order.amountIn != uint256(0) &&
-            args.order.amountOutMin != uint256(0) &&
-            args.order.recipient != address(0) &&
-            args.order.deadline != uint256(0) &&
-            args.order.deadline >= block.timestamp &&
-            args.amountToFillIn > 0 &&
-            args.path.length >= 2 &&
-            args.order.fromToken == args.path[0] &&
-            args.order.toToken == args.path[args.path.length - 1];
+        args.order.maker != address(0) &&
+        args.order.fromToken != address(0) &&
+        args.order.toToken != address(0) &&
+        args.order.fromToken != args.order.toToken &&
+        args.order.amountIn != uint256(0) &&
+        args.order.amountOutMin != uint256(0) &&
+        args.order.recipient != address(0) &&
+        args.order.deadline != uint256(0) &&
+        args.order.deadline >= block.timestamp &&
+        args.amountToFillIn > 0 &&
+        args.path.length >= 2 &&
+        args.order.fromToken == args.path[0] &&
+        args.order.toToken == args.path[args.path.length - 1];
     }
 
     // Checks if an order is canceled / already fully filled

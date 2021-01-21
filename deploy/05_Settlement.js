@@ -50,12 +50,17 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const { newlyDeployed } = await deploy();
 
     if (newlyDeployed) {
+        const { address: orderBook } = await deployments.create2("OrderBook", {
+            from: deployer,
+            log: true,
+        });
         await execute(
             "Settlement",
             {
                 from: deployer,
             },
             "initialize",
+            orderBook,
             network === "mainnet" ? MULTISIG : deployer,
             await getFactoryAddress(),
             await getWethAddress(get),

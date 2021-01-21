@@ -1,7 +1,9 @@
-const { ethers } = require("@nomiclabs/buidler");
-const getContract = require("./getContract");
+const { ethers, deployments, getNamedAccounts } = require("@nomiclabs/buidler");
+const { _TypedDataEncoder } = require("@ethersproject/hash");
 
 class Order {
+    static ORDER_TYPEHASH = "0x7c228c78bd055996a44b5046fb56fa7c28c66bce92d9dc584f742b2cd76a140f";
+
     constructor(
         maker,
         fromToken,
@@ -21,21 +23,72 @@ class Order {
     }
 
     async hash() {
-        const settlement = await getContract("Settlement", this.maker);
-        return await settlement.hashOfOrder(
-            this.maker._address,
-            this.fromToken.address,
-            this.toToken.address,
-            this.amountIn,
-            this.amountOutMin,
-            this.recipient,
-            this.deadline
+        return ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+                [
+                    "bytes32",
+                    "address",
+                    "address",
+                    "address",
+                    "uint256",
+                    "uint256",
+                    "address",
+                    "uint256",
+                ],
+                [
+                    Order.ORDER_TYPEHASH,
+                    this.maker._address,
+                    this.fromToken.address,
+                    this.toToken.address,
+                    this.amountIn,
+                    this.amountOutMin,
+                    this.recipient,
+                    this.deadline,
+                ]
+            )
         );
     }
 
     async sign() {
-        const hash = await this.hash();
-        const signature = await this.maker.signMessage(ethers.utils.arrayify(hash));
+        const { deployer } = await getNamedAccounts();
+        const { address } = await deployments.create2("OrderBook", {
+            from: deployer,
+            log: true,
+        });
+        const domain = {
+            name: "OrderBook",
+            version: "1",
+            chainId: 42, // kovan
+            verifyingContract: address,
+        };
+        const types = {
+            Order: [
+                { name: "maker", type: "address" },
+                { name: "fromToken", type: "address" },
+                { name: "toToken", type: "address" },
+                { name: "amountIn", type: "uint256" },
+                { name: "amountOutMin", type: "uint256" },
+                { name: "recipient", type: "address" },
+                { name: "deadline", type: "uint256" },
+            ],
+        };
+        const value = {
+            maker: this.maker._address,
+            fromToken: this.fromToken.address,
+            toToken: this.toToken.address,
+            amountIn: this.amountIn,
+            amountOutMin: this.amountOutMin,
+            recipient: this.recipient,
+            deadline: this.deadline,
+        };
+        const digest = _TypedDataEncoder.hash(domain, types, value);
+
+        // this only works for builderevm
+        const privateKey = this.maker.provider._buidlerProvider._node._accountPrivateKeys.get(
+            this.maker._address.toLowerCase()
+        );
+        const key = new ethers.utils.SigningKey(ethers.utils.hexlify(privateKey));
+        const signature = key.signDigest(digest);
         return ethers.utils.splitSignature(signature);
     }
 

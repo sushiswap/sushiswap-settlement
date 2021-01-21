@@ -106,8 +106,7 @@ module.exports = async () => {
 
     const cancelOrder = async (signer, order) => {
         const settlement = await getContract("Settlement", signer);
-        const args = await order.toArgs();
-        return await settlement.cancelOrder(...args.slice(0, 7));
+        return await settlement.cancelOrder(await order.toArgs());
     };
 
     const fillOrder = async (signer, order, trade) => {

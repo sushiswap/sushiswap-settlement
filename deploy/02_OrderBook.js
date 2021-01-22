@@ -1,14 +1,12 @@
-const { buidlerArguments } = require("@nomiclabs/buidler");
-const { network } = buidlerArguments;
+const { network } = require("hardhat");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { create2 } = deployments;
-    if (network !== "mainnet") {
-        const { deploy } = await create2("OrderBook", {
+    const { deploy } = deployments;
+    if (network.name !== "mainnet") {
+        await deploy("OrderBook", {
             from: deployer,
             log: true,
         });
-        await deploy();
     }
 };

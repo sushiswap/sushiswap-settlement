@@ -1,16 +1,15 @@
-const { buidlerArguments } = require("@nomiclabs/buidler");
+const { network } = require("hardhat");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-    if (buidlerArguments.network === "buidlerevm") {
+    if (network.name === "hardhat") {
         const { deployer } = await getNamedAccounts();
-        const { get, create2 } = deployments;
+        const { get, deploy } = deployments;
         const factory = await get("UniswapV2Factory");
         const weth = await get("WETH");
-        const { deploy } = await create2("UniswapV2Router02", {
+        const { address } = await deploy("UniswapV2Router02", {
             from: deployer,
             args: [factory.address, weth.address],
             log: true,
         });
-        await deploy();
     }
 };

@@ -1,4 +1,4 @@
-const { buidlerArguments } = require("@nomiclabs/buidler");
+const { network } = require("hardhat");
 const { replaceInFile } = require("replace-in-file");
 
 const replaceInitCodeHash = async hash => {
@@ -11,15 +11,14 @@ const replaceInitCodeHash = async hash => {
 };
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-    if (buidlerArguments.network === "buidlerevm") {
+    if (network.name === "hardhat") {
         const { deployer } = await getNamedAccounts();
-        const { create2, call } = deployments;
-        const { deploy } = await create2("UniswapV2Factory", {
+        const { deploy, call } = deployments;
+        await deploy("UniswapV2Factory", {
             from: deployer,
             args: [deployer],
             log: true,
         });
-        await deploy();
         const hash = await call("UniswapV2Factory", "pairCodeHash");
         await replaceInitCodeHash(hash);
     }

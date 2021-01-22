@@ -1,4 +1,4 @@
-const { ethers } = require("@nomiclabs/buidler");
+const { ethers } = require("hardhat");
 const { TokenAmount, Trade, Percent, Router } = require("@sushiswap/sdk");
 const getContract = require("./getContract");
 const findPairs = require("./findPairs");
@@ -37,7 +37,7 @@ module.exports = async () => {
         )[0];
     };
 
-    const swap = async (signer, trade, recipient = signer._address) => {
+    const swap = async (signer, trade, recipient = signer.address) => {
         const router = await getContract("UniswapV2Router02", signer);
         const fromER20 = await ethers.getContractAt(
             "IUniswapV2ERC20",
@@ -60,7 +60,7 @@ module.exports = async () => {
         toToken,
         fromAmount,
         toAmount,
-        recipient = signer._address
+        recipient = signer.address
     ) => {
         const router = await getContract("UniswapV2Router02", signer);
         const fromER20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address, signer);
@@ -71,7 +71,6 @@ module.exports = async () => {
         const [token0, token1] = sortTokens(fromToken, toToken);
         const [amount0, amount1] =
             token0 === fromToken ? [fromAmount, toAmount] : [toAmount, fromAmount];
-
         await router.addLiquidity(
             token0.address,
             token1.address,
@@ -86,6 +85,7 @@ module.exports = async () => {
 
     const createOrder = async (signer, fromToken, toToken, amountIn, amountOutMin, deadline) => {
         const settlement = await getContract("Settlement", signer);
+
         const fromERC20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address, signer);
         await fromERC20.approve(settlement.address, amountIn);
 
@@ -95,10 +95,12 @@ module.exports = async () => {
             toToken,
             amountIn,
             amountOutMin,
-            signer._address,
+            signer.address,
             deadline
         );
+
         const orderBook = await getContract("OrderBook", signer);
+
         const tx = await orderBook.createOrder(await order.toArgs());
 
         return { order, tx };

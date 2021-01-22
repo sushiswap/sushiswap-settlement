@@ -1,11 +1,10 @@
-const { buidlerArguments, deployments } = require("@nomiclabs/buidler");
-const { network } = buidlerArguments;
+const { deployments, network } = require("hardhat");
 
 module.exports = async () => {
-    if (network === "buidlerevm") {
+    if (network.name === "hardhat") {
         const { get } = deployments;
         return (await get("UniswapV2Factory")).address;
-    } else if (network === "mainnet") {
+    } else if (network.name === "mainnet") {
         return "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
     } else {
         // Use Uniswap's factory for testnets

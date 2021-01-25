@@ -114,44 +114,11 @@ contract OrderBook {
         require(orderOfHash[hash].maker == address(0), "order-exists");
         orderOfHash[hash] = order;
 
-        _addHash(_allHashes, hash, order.deadline);
-        _addHash(_hashesOfMaker[order.maker], hash, order.deadline);
-        _addHash(_hashesOfFromToken[order.fromToken], hash, order.deadline);
-        _addHash(_hashesOfToToken[order.toToken], hash, order.deadline);
+        _allHashes.push(hash);
+        _hashesOfMaker[order.maker].push(hash);
+        _hashesOfFromToken[order.fromToken].push(hash);
+        _hashesOfToToken[order.toToken].push(hash);
 
         emit OrderCreated(hash);
-    }
-
-    function _addHash(
-        bytes32[] storage hashes,
-        bytes32 hash,
-        uint256 deadline
-    ) internal {
-        // Hashes are ordered by deadline increasingly
-        // If there are no hashes in the map yet
-        if (hashes.length == 0) {
-            hashes.push(hash);
-            return;
-        }
-        uint256 index = uint256(-1);
-        // Go through all hashes until you find an order with an earlier deadline
-        for (uint256 i = 0; i < hashes.length; i++) {
-            if (orderOfHash[hashes[i]].deadline > deadline) {
-                index = i;
-                break;
-            }
-        }
-        // If it's the "longest" deadline, just put it at the end of the map
-        if (index == uint256(-1)) {
-            hashes.push(hash);
-            return;
-        }
-        hashes.push();
-        // Create an opening for the order where it belongs
-        for (uint256 i = hashes.length - 1; i > index; i--) {
-            hashes[i] = hashes[i - 1];
-        }
-        // Fit there order in the opening
-        hashes[index] = hash;
     }
 }

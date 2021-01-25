@@ -18,7 +18,7 @@ module.exports = {
         ..._WETH,
         31337: new Token(
             31337,
-            "0x128236dc0cF966F37E4843D7Ed8E09b41B4053F8",
+            "0x5FbDB2315678afecb367f032d93F642f64180aa3",
             18,
             "WETH",
             "Wrapped Ether"

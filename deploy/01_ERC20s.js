@@ -1,4 +1,4 @@
-const { buidlerArguments, ethers } = require("@nomiclabs/buidler");
+const { ethers, network } = require("hardhat");
 const { replaceInFile } = require("replace-in-file");
 const WETH = require("canonical-weth/build/contracts/WETH9.json");
 
@@ -12,28 +12,26 @@ const replaceTokenAddress = async (name, address) => {
     return result.filter(file => file.hasChanged);
 };
 
-const deployERC20 = async (create2, deployer, name, symbol, decimals) => {
+const deployERC20 = async (deploy, deployer, name, symbol, decimals) => {
     const args = [name, symbol, decimals, deployer, ethers.BigNumber.from(10).pow(decimals + 4)];
-    const { deploy } = await create2(symbol, {
+    const { address } = await deploy(symbol, {
         from: deployer,
         contract: "MockERC20",
         args,
         log: true,
     });
-    const { address } = await deploy();
     await replaceTokenAddress(symbol, address);
 };
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { create2, execute } = deployments;
-    if (buidlerArguments.network === "buidlerevm") {
-        const { deploy } = await create2("WETH", {
+    const { deploy, execute } = deployments;
+    if (network.name === "hardhat") {
+        const { address } = await deploy("WETH", {
             from: deployer,
             contract: WETH,
             log: true,
         });
-        await deploy();
         await execute(
             "WETH",
             {
@@ -42,15 +40,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             },
             "deposit"
         );
-        await deployERC20(create2, deployer, "DAI Stablecoin", "DAI", 18);
-        // await deployERC20(create2, deployer, "USD//C", "USDC", 6);
-        // await deployERC20(create2, deployer, "Tether USD", "USDT", 6);
-        // await deployERC20(create2, deployer, "Compound", "COMP", 18);
-        // await deployERC20(create2, deployer, "Maker", "MKR", 18);
-        // await deployERC20(create2, deployer, "OMG Network", "OMG", 18);
-        // await deployERC20(create2, deployer, "BAT", "BAT", 18);
+        await deployERC20(deploy, deployer, "DAI Stablecoin", "DAI", 18);
+        // await deployERC20(deploy, deployer, "USD//C", "USDC", 6);
+        // await deployERC20(deploy, deployer, "Tether USD", "USDT", 6);
+        // await deployERC20(deploy, deployer, "Compound", "COMP", 18);
+        // await deployERC20(deploy, deployer, "Maker", "MKR", 18);
+        // await deployERC20(deploy, deployer, "OMG Network", "OMG", 18);
+        // await deployERC20(deploy, deployer, "BAT", "BAT", 18);
     }
-    if (buidlerArguments.network !== "mainnet") {
-        await deployERC20(create2, deployer, "SushiToken", "SUSHI", 18);
+    if (network.name !== "mainnet") {
+        await deployERC20(deploy, deployer, "SushiToken", "SUSHI", 18);
     }
 };

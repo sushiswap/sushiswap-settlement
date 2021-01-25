@@ -1,4 +1,4 @@
-const { ethers, deployments } = require("@nomiclabs/buidler");
+const { ethers, deployments } = require("hardhat");
 const { WETH, DAI, SUSHI } = require("./tokens");
 const helpers = require("./helpers");
 
@@ -33,7 +33,7 @@ const createAndCancel10Orders = async (fromToken, toToken) => {
 const expectCanceledHashEquals = async (hash, maker, fromToken, toToken) => {
     const settlement = await helpers.getContract("Settlement");
     await helpers.expectToDeepEqual([hash], settlement.allCanceledHashes(0, 1));
-    await helpers.expectToDeepEqual([hash], settlement.canceledHashesOfMaker(maker._address, 0, 1));
+    await helpers.expectToDeepEqual([hash], settlement.canceledHashesOfMaker(maker.address, 0, 1));
     await helpers.expectToDeepEqual(
         [hash],
         settlement.canceledHashesOfFromToken(fromToken.address, 0, 1)
@@ -81,7 +81,6 @@ describe("Settlement", function () {
             ethers.constants.WeiPerEther.mul(1),
             ethers.constants.WeiPerEther.mul(100)
         );
-
         // Create an order of amountOutMin to be 1% higher than the current price of 0.01 WETH
         const trade = await getTrade(fromToken, toToken, ethers.constants.WeiPerEther.div(100));
         const amountOutMin = ethers.BigNumber.from(trade.outputAmount.raw.toString()).mul(101);
@@ -105,7 +104,7 @@ describe("Settlement", function () {
         );
 
         const fromERC20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address);
-        await helpers.expectToEqual(ethers.constants.Zero, fromERC20.balanceOf(users[1]._address));
+        await helpers.expectToEqual(ethers.constants.Zero, fromERC20.balanceOf(users[1].address));
 
         // Call fillOrder() and it now works because DAI price increased more than 1%
         const amountIn = ethers.constants.WeiPerEther.div(100);
@@ -119,7 +118,10 @@ describe("Settlement", function () {
 
         // The relayer and feeSplitRecipient should have received fees
         const address = await helpers.getPair(WETH[chainId], SUSHI[chainId]);
-        const pair = await ethers.getContractAt("IUniswapV2Pair", address);
+        const pair = await ethers.getContractAt(
+            "contracts/mock/uniswapv2/interfaces/IUniswapV2Pair.sol:IUniswapV2Pair",
+            address
+        );
         const events = await pair.queryFilter(pair.filters.Swap());
         const fee = events[events.length - 1].args.amount1Out;
         const feeSplit = fee.mul(await settlement.feeSplitNumerator()).div(10000);
@@ -129,7 +131,7 @@ describe("Settlement", function () {
             feeSplit,
             sushi.balanceOf(await settlement.feeSplitRecipient())
         );
-        await helpers.expectToEqual(fee.sub(feeSplit), sushi.balanceOf(users[1]._address));
+        await helpers.expectToEqual(fee.sub(feeSplit), sushi.balanceOf(users[1].address));
     });
 
     it("Should revert cancelOrder() if not called by maker", async () => {
@@ -200,19 +202,19 @@ describe("Settlement", function () {
         );
         await helpers.expectToDeepEqual(
             hashes,
-            settlement.canceledHashesOfMaker(users[0]._address, 0, 10)
+            settlement.canceledHashesOfMaker(users[0].address, 0, 10)
         );
         await helpers.expectToDeepEqual(
             hashes.slice(0, 5),
-            settlement.canceledHashesOfMaker(users[0]._address, 0, 5)
+            settlement.canceledHashesOfMaker(users[0].address, 0, 5)
         );
         await helpers.expectToDeepEqual(
             hashes.slice(5, 10),
-            settlement.canceledHashesOfMaker(users[0]._address, 1, 5)
+            settlement.canceledHashesOfMaker(users[0].address, 1, 5)
         );
         await helpers.expectToDeepEqual(
             [ethers.constants.HashZero],
-            settlement.canceledHashesOfMaker(users[1]._address, 0, 1)
+            settlement.canceledHashesOfMaker(users[1].address, 0, 1)
         );
     });
 

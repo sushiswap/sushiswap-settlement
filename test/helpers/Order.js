@@ -1,4 +1,4 @@
-const { ethers, ethereum, deployments, getNamedAccounts } = require("@nomiclabs/buidler");
+const { ethers, getChainId, deployments, getNamedAccounts } = require("hardhat");
 const { _TypedDataEncoder } = require("@ethersproject/hash");
 
 class Order {
@@ -10,7 +10,7 @@ class Order {
         toToken,
         amountIn,
         amountOutMin,
-        recipient = maker._address,
+        recipient = maker.address,
         deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 24 * 3600))
     ) {
         this.maker = maker;
@@ -37,7 +37,7 @@ class Order {
                 ],
                 [
                     Order.ORDER_TYPEHASH,
-                    this.maker._address,
+                    this.maker.address,
                     this.fromToken.address,
                     this.toToken.address,
                     this.amountIn,
@@ -51,11 +51,12 @@ class Order {
 
     async sign() {
         const { deployer } = await getNamedAccounts();
-        const { address } = await deployments.create2("OrderBook", {
+        const { address } = await deployments.deploy("OrderBook", {
             from: deployer,
             log: true,
         });
-        const chainId = Number(await ethereum.send("eth_chainId", []));
+
+        const chainId = await getChainId();
         const domain = {
             name: "OrderBook",
             version: "1",
@@ -74,7 +75,7 @@ class Order {
             ],
         };
         const value = {
-            maker: this.maker._address,
+            maker: this.maker.address,
             fromToken: this.fromToken.address,
             toToken: this.toToken.address,
             amountIn: this.amountIn,
@@ -82,12 +83,16 @@ class Order {
             recipient: this.recipient,
             deadline: this.deadline,
         };
+
         const digest = _TypedDataEncoder.hash(domain, types, value);
 
         // this only works for builderevm
-        const privateKey = this.maker.provider._buidlerProvider._node._accountPrivateKeys.get(
-            this.maker._address.toLowerCase()
-        );
+        // const privateKey = this.maker.provider._hardhatProvider._node._accountPrivateKeys.get(
+        //     this.maker.address.toLowerCase()
+        // );
+
+        // Deployer private key for default hardhat accounts[0], might want to replace this
+        const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
         const key = new ethers.utils.SigningKey(ethers.utils.hexlify(privateKey));
         const signature = key.signDigest(digest);
         return ethers.utils.splitSignature(signature);
@@ -96,7 +101,7 @@ class Order {
     async toArgs() {
         const { v, r, s } = await this.sign();
         return [
-            this.maker._address,
+            this.maker.address,
             this.fromToken.address,
             this.toToken.address,
             this.amountIn,

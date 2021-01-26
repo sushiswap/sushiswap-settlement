@@ -10,7 +10,7 @@ require("hardhat-gas-reporter");
 require("solidity-coverage");
 
 const accounts = {
-    mnemonic: process.env.MNEMONIC || "test test test test test test test test test test test junk",
+    mnemonic: "test test test test test test test test test test test junk",
 };
 
 module.exports = {
@@ -43,7 +43,7 @@ module.exports = {
         user: 2,
     },
     gasReporter: {
-        enabled: process.env.REPORT_GAS ? true : false,
+        enabled: !!process.env.REPORT_GAS,
         currency: "USD",
         coinmarketcap: process.env.COINMARKETCAP_API_KEY,
         excludeContracts: ["contracts/mock/", "contracts/libraries/"],

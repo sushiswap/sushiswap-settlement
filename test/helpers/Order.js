@@ -51,7 +51,7 @@ class Order {
 
     async sign() {
         const { deployer } = await getNamedAccounts();
-        const { address } = await deployments.deploy("OrderBook", {
+        const { address } = await deployments.deterministic("OrderBook", {
             from: deployer,
             log: true,
         });

@@ -25,7 +25,7 @@ const getSushiAddress = async get => {
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { call, deploy, get, execute } = deployments;
+    const { call, deterministic, get, execute } = deployments;
 
     const artifact = await deployments.getArtifact("Settlement");
     const contract = {
@@ -40,19 +40,20 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         );
     }
 
-    const { newlyDeployed } = await deploy("Settlement", {
+    const { deploy } = await deterministic("Settlement", {
         contract,
         from: deployer,
         log: true,
         gasLimit: 5000000,
     });
+    const { newlyDeployed } = await deploy();
 
     if (newlyDeployed) {
-        const { address: orderBook } = await deployments.deploy("OrderBook", {
+        const { address: orderBook } = await deterministic("OrderBook", {
             from: deployer,
             log: true,
         });
-        const chainId = await getChainId();
+        const chainId = network.name === "mainnet" ? 42 : await getChainId();
         await execute(
             "Settlement",
             {
@@ -61,7 +62,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             "initialize",
             chainId,
             orderBook,
-            network === "mainnet" ? MULTISIG : deployer,
+            network.name === "mainnet" ? MULTISIG : deployer,
             await getFactoryAddress(),
             await getWethAddress(get),
             await getSushiAddress(get),

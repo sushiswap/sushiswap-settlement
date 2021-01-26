@@ -12,26 +12,29 @@ const replaceTokenAddress = async (name, address) => {
     return result.filter(file => file.hasChanged);
 };
 
-const deployERC20 = async (deploy, deployer, name, symbol, decimals) => {
+const deployERC20 = async (deterministic, deployer, name, symbol, decimals) => {
     const args = [name, symbol, decimals, deployer, ethers.BigNumber.from(10).pow(decimals + 4)];
-    const { address } = await deploy(symbol, {
+    const { deploy } = await deterministic(symbol, {
         from: deployer,
         contract: "MockERC20",
         args,
         log: true,
     });
+    const { address } = await deploy();
+
     await replaceTokenAddress(symbol, address);
 };
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { deploy, execute } = deployments;
+    const { deterministic, execute } = deployments;
     if (network.name === "hardhat") {
-        const { address } = await deploy("WETH", {
+        const { deploy } = await deterministic("WETH", {
             from: deployer,
             contract: WETH,
             log: true,
         });
+        await deploy();
         await execute(
             "WETH",
             {
@@ -40,15 +43,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             },
             "deposit"
         );
-        await deployERC20(deploy, deployer, "DAI Stablecoin", "DAI", 18);
-        // await deployERC20(deploy, deployer, "USD//C", "USDC", 6);
-        // await deployERC20(deploy, deployer, "Tether USD", "USDT", 6);
-        // await deployERC20(deploy, deployer, "Compound", "COMP", 18);
-        // await deployERC20(deploy, deployer, "Maker", "MKR", 18);
-        // await deployERC20(deploy, deployer, "OMG Network", "OMG", 18);
-        // await deployERC20(deploy, deployer, "BAT", "BAT", 18);
+        await deployERC20(deterministic, deployer, "DAI Stablecoin", "DAI", 18);
+        // await deployERC20(deterministic, deployer, "USD//C", "USDC", 6);
+        // await deployERC20(deterministic, deployer, "Tether USD", "USDT", 6);
+        // await deployERC20(deterministic, deployer, "Compound", "COMP", 18);
+        // await deployERC20(deterministic, deployer, "Maker", "MKR", 18);
+        // await deployERC20(deterministic, deployer, "OMG Network", "OMG", 18);
+        // await deployERC20(deterministic, deployer, "BAT", "BAT", 18);
     }
     if (network.name !== "mainnet") {
-        await deployERC20(deploy, deployer, "SushiToken", "SUSHI", 18);
+        await deployERC20(deterministic, deployer, "SushiToken", "SUSHI", 18);
     }
 };

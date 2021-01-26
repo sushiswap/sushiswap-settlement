@@ -2,11 +2,12 @@ const { network } = require("hardhat");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
+    const { deterministic } = deployments;
     if (network.name !== "mainnet") {
-        await deploy("OrderBook", {
+        const { deploy } = await deterministic("OrderBook", {
             from: deployer,
             log: true,
         });
+        await deploy();
     }
 };

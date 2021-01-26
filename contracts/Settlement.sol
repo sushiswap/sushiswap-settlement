@@ -5,14 +5,15 @@ pragma experimental ABIEncoderV2;
 
 import "@sushiswap/core/contracts/uniswapv2/libraries/SafeMath.sol";
 import "@sushiswap/core/contracts/uniswapv2/libraries/TransferHelper.sol";
+import "@sushiswap/core/contracts/uniswapv2/libraries/UniswapV2Library.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IERC20.sol";
-import "./interfaces/IMintable.sol";
+import "./interfaces/ISettlement.sol";
+import "./libraries/Orders.sol";
 import "./libraries/EIP712.sol";
 import "./libraries/Bytes32Pagination.sol";
 import "./mixins/Ownable.sol";
-import "./UniswapV2Router02Settlement.sol";
 
-contract Settlement is Ownable, UniswapV2Router02Settlement {
+contract Settlement is Ownable, ISettlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
     using Bytes32Pagination for bytes32[];
@@ -37,6 +38,10 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     mapping(bytes32 => bool) public canceledOfHash;
     // Hash of an order => filledAmountIn
     mapping(bytes32 => uint256) public filledAmountInOfHash;
+
+    address public factory;
+
+    address public weth;
 
     // Address of the Sushi token
     address public sushi;
@@ -76,8 +81,9 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         );
 
         Ownable._initialize(owner);
-        UniswapV2Router02Settlement._initialize(_factory, _weth);
 
+        factory = _factory;
+        weth = _weth;
         sushi = _sushi;
         feeSplitRecipient = _feeSplitRecipient;
         feeNumerator = _feeNumerator;
@@ -178,8 +184,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
 
         // Calculates fee deducted amountIn and amountOutMin
         (uint256 amountIn, uint256 amountOutMin) = (
-        args.amountToFillIn,
-        args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
+            args.amountToFillIn,
+            args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn
         );
         uint256 _feeNumerator = feeNumerator;
         uint256 fee = amountIn.mul(_feeNumerator) / 10000;
@@ -212,19 +218,19 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
     // Checks if an order is valid - if it contains all the information required
     function _validateArgs(FillOrderArgs memory args) internal view returns (bool) {
         return
-        args.order.maker != address(0) &&
-        args.order.fromToken != address(0) &&
-        args.order.toToken != address(0) &&
-        args.order.fromToken != args.order.toToken &&
-        args.order.amountIn != uint256(0) &&
-        args.order.amountOutMin != uint256(0) &&
-        args.order.recipient != address(0) &&
-        args.order.deadline != uint256(0) &&
-        args.order.deadline >= block.timestamp &&
-        args.amountToFillIn > 0 &&
-        args.path.length >= 2 &&
-        args.order.fromToken == args.path[0] &&
-        args.order.toToken == args.path[args.path.length - 1];
+            args.order.maker != address(0) &&
+            args.order.fromToken != address(0) &&
+            args.order.toToken != address(0) &&
+            args.order.fromToken != args.order.toToken &&
+            args.order.amountIn != uint256(0) &&
+            args.order.amountOutMin != uint256(0) &&
+            args.order.recipient != address(0) &&
+            args.order.deadline != uint256(0) &&
+            args.order.deadline >= block.timestamp &&
+            args.amountToFillIn > 0 &&
+            args.path.length >= 2 &&
+            args.order.fromToken == args.path[0] &&
+            args.order.toToken == args.path[args.path.length - 1];
     }
 
     // Checks if an order is canceled / already fully filled
@@ -245,8 +251,8 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         uint256 amount,
         bytes32 hash
     ) internal {
-        // If fromToken is WETH then path is [fromToken, sushi], otherwise [fromToken, WETH, sushi]
-        address _weth = WETH;
+        // If fromToken is weth then path is [fromToken, sushi], otherwise [fromToken, weth, sushi]
+        address _weth = weth;
         address[] memory path = new address[](fromToken == _weth ? 2 : 3);
         path[path.length - 1] = sushi;
         path[path.length - 2] = _weth;
@@ -283,6 +289,29 @@ contract Settlement is Ownable, UniswapV2Router02Settlement {
         TransferHelper.safeTransferFrom(path[0], from, UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn);
         _swap(amounts, path, to);
         amountOut = amounts[amounts.length - 1];
+    }
+
+    // requires the initial amount to have already been sent to the first pair
+    function _swap(
+        uint256[] memory amounts,
+        address[] memory path,
+        address _to
+    ) internal virtual {
+        for (uint256 i; i < path.length - 1; i++) {
+            (address input, address output) = (path[i], path[i + 1]);
+            (address token0, ) = UniswapV2Library.sortTokens(input, output);
+            uint256 amountOut = amounts[i + 1];
+            (uint256 amount0Out, uint256 amount1Out) = input == token0
+                ? (uint256(0), amountOut)
+                : (amountOut, uint256(0));
+            address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;
+            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(
+                amount0Out,
+                amount1Out,
+                to,
+                new bytes(0)
+            );
+        }
     }
 
     // Fills multiple orders passed as an array

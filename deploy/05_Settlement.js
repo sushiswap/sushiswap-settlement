@@ -60,6 +60,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         ],
         from: deployer,
         log: true,
-        gasLimit: 5000000,
+        gasLimit: 6000000,
     });
 };

@@ -83,7 +83,18 @@ module.exports = async () => {
         );
     };
 
-    const createOrder = async (signer, fromToken, toToken, amountIn, amountOutMin, deadline) => {
+    const getDeadline = hoursFromNow =>
+        ethers.BigNumber.from(Math.floor(Date.now() / 1000 + hoursFromNow * 3600));
+
+    const createOrder = async (
+        signer,
+        fromToken,
+        toToken,
+        amountIn,
+        amountOutMin,
+        deadline,
+        overrides = {}
+    ) => {
         const settlement = await getContract("Settlement", signer);
 
         const fromERC20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address, signer);
@@ -101,7 +112,7 @@ module.exports = async () => {
 
         const orderBook = await getContract("OrderBook", signer);
 
-        const tx = await orderBook.createOrder(await order.toArgs());
+        const tx = await orderBook.createOrder(await order.toArgs(overrides));
 
         return { order, tx };
     };
@@ -131,6 +142,7 @@ module.exports = async () => {
         getTrade,
         swap,
         addLiquidity,
+        getDeadline,
         createOrder,
         cancelOrder,
         fillOrder,

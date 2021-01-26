@@ -11,7 +11,7 @@ class Order {
         amountIn,
         amountOutMin,
         recipient = maker.address,
-        deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 24 * 3600))
+        deadline
     ) {
         this.maker = maker;
         this.fromToken = fromToken;
@@ -22,7 +22,7 @@ class Order {
         this.deadline = deadline;
     }
 
-    async hash() {
+    async hash(overrides = {}) {
         return ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
                 [
@@ -37,19 +37,19 @@ class Order {
                 ],
                 [
                     Order.ORDER_TYPEHASH,
-                    this.maker.address,
-                    this.fromToken.address,
-                    this.toToken.address,
-                    this.amountIn,
-                    this.amountOutMin,
-                    this.recipient,
-                    this.deadline,
+                    overrides.maker || this.maker.address,
+                    overrides.fromToken || this.fromToken.address,
+                    overrides.toToken || this.toToken.address,
+                    overrides.amountIn || this.amountIn,
+                    overrides.amountOutMin || this.amountOutMin,
+                    overrides.recipient || this.recipient,
+                    overrides.deadline || this.deadline,
                 ]
             )
         );
     }
 
-    async sign() {
+    async sign(overrides = {}) {
         const { deployer } = await getNamedAccounts();
         const { address } = await deployments.deterministic("OrderBook", {
             from: deployer,
@@ -75,21 +75,16 @@ class Order {
             ],
         };
         const value = {
-            maker: this.maker.address,
-            fromToken: this.fromToken.address,
-            toToken: this.toToken.address,
-            amountIn: this.amountIn,
-            amountOutMin: this.amountOutMin,
-            recipient: this.recipient,
-            deadline: this.deadline,
+            maker: overrides.maker || this.maker.address,
+            fromToken: overrides.fromToken || this.fromToken.address,
+            toToken: overrides.toToken || this.toToken.address,
+            amountIn: overrides.amountIn || this.amountIn,
+            amountOutMin: overrides.amountOutMin || this.amountOutMin,
+            recipient: overrides.recipient || this.recipient,
+            deadline: overrides.deadline || this.deadline,
         };
 
         const digest = _TypedDataEncoder.hash(domain, types, value);
-
-        // this only works for builderevm
-        // const privateKey = this.maker.provider._hardhatProvider._node._accountPrivateKeys.get(
-        //     this.maker.address.toLowerCase()
-        // );
 
         // Deployer private key for default hardhat accounts[0], might want to replace this
         const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -98,16 +93,16 @@ class Order {
         return ethers.utils.splitSignature(signature);
     }
 
-    async toArgs() {
-        const { v, r, s } = await this.sign();
+    async toArgs(overrides = {}) {
+        const { v, r, s } = await this.sign(overrides);
         return [
-            this.maker.address,
-            this.fromToken.address,
-            this.toToken.address,
-            this.amountIn,
-            this.amountOutMin,
-            this.recipient,
-            this.deadline,
+            overrides.maker || this.maker.address,
+            overrides.fromToken || this.fromToken.address,
+            overrides.toToken || this.toToken.address,
+            overrides.amountIn || this.amountIn,
+            overrides.amountOutMin || this.amountOutMin,
+            overrides.recipient || this.recipient,
+            overrides.deadline || this.deadline,
             v,
             r,
             s,

@@ -21,6 +21,7 @@ describe("Settlement", function () {
             getTrade,
             swap,
             addLiquidity,
+            getDeadline,
             createOrder,
             fillOrder,
             filledAmountIn,
@@ -54,7 +55,8 @@ describe("Settlement", function () {
             fromToken,
             toToken,
             ethers.constants.WeiPerEther,
-            amountOutMin
+            amountOutMin,
+            getDeadline(24)
         );
 
         // Calling fillOrder() has no effect because the price is higher than the order
@@ -100,7 +102,7 @@ describe("Settlement", function () {
     });
 
     it("Should revert cancelOrder() if not called by maker", async () => {
-        const { chainId, users, createOrder, cancelOrder } = await helpers.setup();
+        const { chainId, users, getDeadline, createOrder, cancelOrder } = await helpers.setup();
 
         const { order } = await createOrder(
             users[0],
@@ -108,7 +110,7 @@ describe("Settlement", function () {
             DAI[chainId],
             ethers.constants.WeiPerEther,
             ethers.constants.WeiPerEther.mul(101),
-            ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 3600 + Math.random() * 3600))
+            getDeadline(24)
         );
         await helpers.expectToBeReverted("not-called-by-maker", cancelOrder(users[1], order));
     });
@@ -118,6 +120,7 @@ describe("Settlement", function () {
             chainId,
             users,
             addLiquidity,
+            getDeadline,
             createOrder,
             cancelOrder,
             fillOrder,
@@ -132,7 +135,7 @@ describe("Settlement", function () {
             toToken,
             ethers.constants.WeiPerEther,
             ethers.constants.WeiPerEther.mul(101),
-            ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 3600 + Math.random() * 3600))
+            getDeadline(24)
         );
         await cancelOrder(users[0], order);
         await expectOrderCanceled(await order.hash(), users[0], fromToken, toToken);

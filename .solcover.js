@@ -1,4 +1,4 @@
 module.exports = {
     norpc: true,
-    skipFiles: ["mock/", "interfaces/", "libraries/"],
+    skipFiles: ["mock/", "interfaces/", "libraries/", "mixins/"],
 };

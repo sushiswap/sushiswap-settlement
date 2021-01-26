@@ -2,46 +2,11 @@ const { ethers, deployments } = require("hardhat");
 const { WETH, DAI, SUSHI } = require("./tokens");
 const helpers = require("./helpers");
 
-const createAndCancel10Orders = async (fromToken, toToken) => {
-    const { users, createOrder, cancelOrder } = await helpers.setup();
-    const orderBook = await helpers.getContract("OrderBook");
+const expectOrderCanceled = async hash => {
     const settlement = await helpers.getContract("Settlement");
-
-    const orders = [];
-    for (let i = 0; i < 10; i++) {
-        const { order } = await createOrder(
-            users[0],
-            fromToken,
-            toToken,
-            ethers.constants.WeiPerEther,
-            ethers.constants.WeiPerEther.mul(100 + i * 10),
-            ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 3600 + Math.random() * 3600))
-        );
-        orders.push(order);
-    }
-
-    const canceledHashes = [];
-    for (let i = 0; i < orders.length; i++) {
-        const order = orders[orders.length - i - 1];
-        await cancelOrder(order.maker, order);
-        canceledHashes.push(await order.hash());
-    }
-
-    return { users, fromToken, toToken, orderBook, settlement, orders, canceledHashes };
-};
-
-const expectCanceledHashEquals = async (hash, maker, fromToken, toToken) => {
-    const settlement = await helpers.getContract("Settlement");
-    await helpers.expectToDeepEqual([hash], settlement.allCanceledHashes(0, 1));
-    await helpers.expectToDeepEqual([hash], settlement.canceledHashesOfMaker(maker.address, 0, 1));
-    await helpers.expectToDeepEqual(
-        [hash],
-        settlement.canceledHashesOfFromToken(fromToken.address, 0, 1)
-    );
-    await helpers.expectToDeepEqual(
-        [hash],
-        settlement.canceledHashesOfToToken(toToken.address, 0, 1)
-    );
+    const filter = settlement.filters.OrderCanceled(hash);
+    const events = await settlement.queryFilter(filter);
+    helpers.chai.expect(events.length).to.be.equal(1);
 };
 
 describe("Settlement", function () {
@@ -169,10 +134,8 @@ describe("Settlement", function () {
             ethers.constants.WeiPerEther.mul(101),
             ethers.BigNumber.from(Math.floor(Date.now() / 1000 + 3600 + Math.random() * 3600))
         );
-        await expectCanceledHashEquals(ethers.constants.HashZero, users[0], fromToken, toToken);
-
         await cancelOrder(users[0], order);
-        await expectCanceledHashEquals(await order.hash(), users[0], fromToken, toToken);
+        await expectOrderCanceled(await order.hash(), users[0], fromToken, toToken);
 
         // Filling a canceled order does nothing
         await addLiquidity(
@@ -189,86 +152,5 @@ describe("Settlement", function () {
         );
         const receipt = await tx.wait();
         await helpers.expectToEqual(0, receipt.logs.length);
-    });
-
-    it("Should return correct canceledHashesOfMaker()", async () => {
-        const { chainId } = await helpers.setup();
-        const fromToken = WETH[chainId];
-        const toToken = DAI[chainId];
-
-        const { users, settlement, canceledHashes: hashes } = await createAndCancel10Orders(
-            fromToken,
-            toToken
-        );
-        await helpers.expectToDeepEqual(
-            hashes,
-            settlement.canceledHashesOfMaker(users[0].address, 0, 10)
-        );
-        await helpers.expectToDeepEqual(
-            hashes.slice(0, 5),
-            settlement.canceledHashesOfMaker(users[0].address, 0, 5)
-        );
-        await helpers.expectToDeepEqual(
-            hashes.slice(5, 10),
-            settlement.canceledHashesOfMaker(users[0].address, 1, 5)
-        );
-        await helpers.expectToDeepEqual(
-            [ethers.constants.HashZero],
-            settlement.canceledHashesOfMaker(users[1].address, 0, 1)
-        );
-    });
-
-    it("Should return correct canceledHashesOfFromToken()", async () => {
-        const { chainId } = await helpers.setup();
-        const fromToken = WETH[chainId];
-        const toToken = DAI[chainId];
-
-        const { settlement, canceledHashes: hashes } = await createAndCancel10Orders(
-            fromToken,
-            toToken
-        );
-        await helpers.expectToDeepEqual(
-            hashes,
-            settlement.canceledHashesOfFromToken(fromToken.address, 0, 10)
-        );
-        await helpers.expectToDeepEqual(
-            hashes.slice(0, 5),
-            settlement.canceledHashesOfFromToken(fromToken.address, 0, 5)
-        );
-        await helpers.expectToDeepEqual(
-            hashes.slice(5, 10),
-            settlement.canceledHashesOfFromToken(fromToken.address, 1, 5)
-        );
-        await helpers.expectToDeepEqual(
-            [ethers.constants.HashZero],
-            settlement.canceledHashesOfFromToken(toToken.address, 0, 1)
-        );
-    });
-
-    it("Should return correct canceledHashesOfToToken()", async () => {
-        const { chainId } = await helpers.setup();
-        const fromToken = WETH[chainId];
-        const toToken = DAI[chainId];
-
-        const { settlement, canceledHashes: hashes } = await createAndCancel10Orders(
-            fromToken,
-            toToken
-        );
-        await helpers.expectToDeepEqual(
-            hashes,
-            settlement.canceledHashesOfToToken(toToken.address, 0, 10)
-        );
-        await helpers.expectToDeepEqual(
-            hashes.slice(0, 5),
-            settlement.canceledHashesOfToToken(toToken.address, 0, 5)
-        );
-        await helpers.expectToDeepEqual(
-            hashes.slice(5, 10),
-            settlement.canceledHashesOfToToken(toToken.address, 1, 5)
-        );
-        await helpers.expectToDeepEqual(
-            [ethers.constants.HashZero],
-            settlement.canceledHashesOfToToken(fromToken.address, 0, 1)
-        );
     });
 });

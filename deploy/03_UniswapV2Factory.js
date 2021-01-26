@@ -25,7 +25,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         });
         await deploy();
         const hash = await call("UniswapV2Factory", "pairCodeHash");
-        console.log(hash);
         await replaceInitCodeHash(hash);
     }
 };

@@ -23,31 +23,22 @@ contract Settlement is Ownable, ISettlement {
     // Maximum fee split = 50%
     uint256 public constant MAX_FEE_SPLIT_NUMERATOR = 5000;
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 public immutable DOMAIN_SEPARATOR;
 
-    bool private _initialized;
-    // Array of hashes of all canceled orders
-    bytes32[] internal _allCanceledHashes;
-    // Address of order maker => canceled hashes (orders)
-    mapping(address => bytes32[]) internal _canceledHashesOfMaker;
-    // Address of fromToken => canceled hashes (orders)
-    mapping(address => bytes32[]) internal _canceledHashesOfFromToken;
-    // Address of toToken => canceled hashes (orders)
-    mapping(address => bytes32[]) internal _canceledHashesOfToToken;
     // Hash of an order => if canceled
     mapping(bytes32 => bool) public canceledOfHash;
     // Hash of an order => filledAmountIn
     mapping(bytes32 => uint256) public filledAmountInOfHash;
 
-    address public factory;
+    address public immutable factory;
 
-    address public weth;
+    address public immutable weth;
 
     // Address of the Sushi token
-    address public sushi;
+    address public immutable sushi;
 
     // This address receives (feeSplitNumerator / 10000) of fee for every order filling
-    address public feeSplitRecipient;
+    address public immutable feeSplitRecipient;
 
     // Used to calculate the total fee of an order
     // Denominator is 10000
@@ -57,7 +48,7 @@ contract Settlement is Ownable, ISettlement {
     // Out of fee, denominator is 10000
     uint256 public feeSplitNumerator;
 
-    function initialize(
+    constructor(
         uint256 orderBookChainId,
         address orderBookAddress,
         address owner,
@@ -68,8 +59,6 @@ contract Settlement is Ownable, ISettlement {
         uint256 _feeNumerator,
         uint256 _feeSplitNumerator
     ) public {
-        require(!_initialized, "already-initialized");
-
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -88,8 +77,6 @@ contract Settlement is Ownable, ISettlement {
         feeSplitRecipient = _feeSplitRecipient;
         feeNumerator = _feeNumerator;
         feeSplitNumerator = _feeSplitNumerator;
-
-        _initialized = true;
     }
 
     // Updates the fee amount
@@ -102,58 +89,6 @@ contract Settlement is Ownable, ISettlement {
     function updateFeeSplit(uint256 _feeSplitNumerator) public onlyOwner {
         require(_feeSplitNumerator < MAX_FEE_SPLIT_NUMERATOR, "fee-split-too-high");
         feeSplitNumerator = _feeSplitNumerator;
-    }
-
-    // Returns the number of canceled orders of a maker
-    function numberOfCanceledHashesOfMaker(address maker) public view returns (uint256) {
-        return _canceledHashesOfMaker[maker].length;
-    }
-
-    // Return the number of canceled orders where fromToken is the origin token
-    function numberOfCanceledHashesOfFromToken(address fromToken) public view returns (uint256) {
-        return _canceledHashesOfFromToken[fromToken].length;
-    }
-
-    // Return the number of canceled orders where toToken is the target token
-    function numberOfCanceledHashesOfToToken(address toToken) public view returns (uint256) {
-        return _canceledHashesOfToToken[toToken].length;
-    }
-
-    // Returns the number of canceled orders
-    function numberOfAllCanceledHashes() public view returns (uint256) {
-        return _allCanceledHashes.length;
-    }
-
-    // Returns an array of hashes of canceled orders of a maker
-    function canceledHashesOfMaker(
-        address maker,
-        uint256 page,
-        uint256 limit
-    ) public view returns (bytes32[] memory) {
-        return _canceledHashesOfMaker[maker].paginate(page, limit);
-    }
-
-    // Returns an array of hashes of canceled orders where fromToken is the origin token
-    function canceledHashesOfFromToken(
-        address fromToken,
-        uint256 page,
-        uint256 limit
-    ) public view returns (bytes32[] memory) {
-        return _canceledHashesOfFromToken[fromToken].paginate(page, limit);
-    }
-
-    // Returns an array of hashes of canceled orders where toToken is the target token
-    function canceledHashesOfToToken(
-        address toToken,
-        uint256 page,
-        uint256 limit
-    ) public view returns (bytes32[] memory) {
-        return _canceledHashesOfToToken[toToken].paginate(page, limit);
-    }
-
-    // Return an array of canceled hashes
-    function allCanceledHashes(uint256 page, uint256 limit) public view returns (bytes32[] memory) {
-        return _allCanceledHashes.paginate(page, limit);
     }
 
     // Fills an order
@@ -337,11 +272,6 @@ contract Settlement is Ownable, ISettlement {
         address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, order.v, order.r, order.s);
         require(signer != address(0) && signer == order.maker, "invalid-signature");
         require(!canceledOfHash[hash], "already-canceled");
-
-        _allCanceledHashes.push(hash);
-        _canceledHashesOfMaker[order.maker].push(hash);
-        _canceledHashesOfFromToken[order.fromToken].push(hash);
-        _canceledHashesOfToToken[order.toToken].push(hash);
         canceledOfHash[hash] = true;
 
         emit OrderCanceled(hash);

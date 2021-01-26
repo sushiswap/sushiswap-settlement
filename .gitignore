@@ -7,3 +7,6 @@ node_modules
 cache
 artifacts
 deployments/localhost*
+
+coverage.json
+coverage

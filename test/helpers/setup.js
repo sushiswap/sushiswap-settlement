@@ -98,7 +98,7 @@ module.exports = async () => {
         const settlement = await getContract("Settlement", signer);
 
         const fromERC20 = await ethers.getContractAt("IUniswapV2ERC20", fromToken.address, signer);
-        await fromERC20.approve(settlement.address, amountIn);
+        await fromERC20.approve(settlement.address, overrides.amountToApprove || amountIn);
 
         const order = new Order(
             signer,
@@ -117,15 +117,15 @@ module.exports = async () => {
         return { order, tx };
     };
 
-    const cancelOrder = async (signer, order) => {
+    const cancelOrder = async (signer, order, overrides = {}) => {
         const settlement = await getContract("Settlement", signer);
-        return await settlement.cancelOrder(await order.toArgs());
+        return await settlement.cancelOrder(await order.toArgs(overrides));
     };
 
-    const fillOrder = async (signer, order, trade) => {
+    const fillOrder = async (signer, order, trade, overrides = {}) => {
         const settlement = await getContract("Settlement", signer);
         return await settlement.fillOrder([
-            await order.toArgs(),
+            await order.toArgs(overrides),
             trade.inputAmount.raw.toString(),
             trade.route.path.map(token => token.address),
         ]);

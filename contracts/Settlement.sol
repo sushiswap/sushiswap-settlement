@@ -97,17 +97,7 @@ contract Settlement is Ownable, ISettlement {
         require(msg.sender == tx.origin, "called-by-contract");
         // voids flashloan attack vectors
 
-        // Check the approved amount from maker
-        uint256 allowance = IERC20Uniswap(args.order.fromToken).allowance(args.order.maker, address(this));
-        if (allowance < args.amountToFillIn) {
-            return 0;
-        }
-        // Check if the signature is valid
         bytes32 hash = args.order.hash();
-        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, args.order.v, args.order.r, args.order.s);
-        if (signer == address(0) || signer != args.order.maker) {
-            return 0;
-        }
         // Check if the order is valid
         if (!_validateArgs(args)) {
             return 0;
@@ -116,7 +106,17 @@ contract Settlement is Ownable, ISettlement {
         if (!_validateStatus(args, hash)) {
             return 0;
         }
+        // Check if the signature is valid
+        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, args.order.v, args.order.r, args.order.s);
+        if (signer == address(0) || signer != args.order.maker) {
+            return 0;
+        }
 
+        // Check the approved amount from maker
+        uint256 allowance = IERC20Uniswap(args.order.fromToken).allowance(args.order.maker, address(this));
+        if (allowance < args.amountToFillIn) {
+            return 0;
+        }
         // Calculates fee deducted amountIn and amountOutMin
         (uint256 amountIn, uint256 amountOutMin) = (
             args.amountToFillIn,
@@ -266,11 +266,10 @@ contract Settlement is Ownable, ISettlement {
 
     // Cancels an order, has to been called by order maker
     function cancelOrder(Orders.Order memory order) public override {
-        require(msg.sender == order.maker, "not-called-by-maker");
-
         bytes32 hash = order.hash();
         address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, order.v, order.r, order.s);
         require(signer != address(0) && signer == order.maker, "invalid-signature");
+        require(msg.sender == order.maker, "not-called-by-maker");
         require(!canceledOfHash[hash], "already-canceled");
         canceledOfHash[hash] = true;
 

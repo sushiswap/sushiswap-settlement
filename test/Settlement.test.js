@@ -53,6 +53,7 @@ describe("Settlement", function () {
             filledAmountIn,
         } = await helpers.setup();
         const settlement = await helpers.getContract("Settlement");
+        // const fromToken = SUSHI[chainId];
         const fromToken = WETH[chainId];
         const toToken = DAI[chainId];
 
@@ -110,21 +111,17 @@ describe("Settlement", function () {
         await helpers.expectToEqual(amountIn, filledAmountIn(users[1], order));
 
         // The relayer and feeSplitRecipient should have received fees
-        const address = await helpers.getPair(WETH[chainId], SUSHI[chainId]);
-        const pair = await ethers.getContractAt(
-            "contracts/mock/uniswapv2/interfaces/IUniswapV2Pair.sol:IUniswapV2Pair",
-            address
-        );
-        const events = await pair.queryFilter(pair.filters.Swap());
-        const fee = events[events.length - 1].args.amount1Out;
-        const feeSplit = fee.mul(await settlement.feeSplitNumerator()).div(10000);
+        const feeSplitTransferred = await settlement.queryFilter(settlement.filters.FeeSplitTransferred());
+        const feeSplit = feeSplitTransferred[feeSplitTransferred.length - 1].args.amount;
+        const feeTransferred = await settlement.queryFilter(settlement.filters.FeeTransferred());
+        const fee = feeTransferred[feeTransferred.length - 1].args.amount;
 
         const sushi = await helpers.getContract("SUSHI");
         await helpers.expectToEqual(
             feeSplit,
             sushi.balanceOf(await settlement.feeSplitRecipient())
         );
-        await helpers.expectToEqual(fee.sub(feeSplit), sushi.balanceOf(users[1].address));
+        await helpers.expectToEqual(fee, sushi.balanceOf(users[1].address));
     });
 
     it("Should fillOrder() when feeNumerator == 0", async () => {

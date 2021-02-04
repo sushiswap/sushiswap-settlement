@@ -186,6 +186,18 @@ contract Settlement is Ownable, ISettlement {
         uint256 amount,
         bytes32 hash
     ) internal {
+        if (fromToken == sushi) {
+            uint256 feeSplit = amount.mul(feeSplitNumerator) / 10000;
+            if (feeSplit > 0) {
+                address _recipient = feeSplitRecipient;
+                TransferHelper.safeTransferFrom(sushi, maker, _recipient, feeSplit);
+                emit FeeSplitTransferred(hash, _recipient, feeSplit);
+            }
+            uint256 remainder = amount.sub(feeSplit);
+            TransferHelper.safeTransferFrom(sushi, maker, msg.sender, remainder);
+            emit FeeTransferred(hash, msg.sender, remainder);
+            return;
+        }
         // If fromToken is weth then path is [fromToken, sushi], otherwise [fromToken, weth, sushi]
         address _weth = weth;
         address[] memory path = new address[](fromToken == _weth ? 2 : 3);

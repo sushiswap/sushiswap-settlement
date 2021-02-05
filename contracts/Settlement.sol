@@ -15,10 +15,6 @@ contract Settlement is ISettlement {
     using SafeMathUniswap for uint256;
     using Orders for Orders.Order;
 
-    // Maximum fee= 1%
-    uint256 public constant MAX_FEE_NUMERATOR = 100;
-    // Maximum fee split = 50%
-    uint256 public constant MAX_FEE_SPLIT_NUMERATOR = 5000;
     // solhint-disable-next-line var-name-mixedcase
     bytes32 public immutable DOMAIN_SEPARATOR;
 

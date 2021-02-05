@@ -372,20 +372,6 @@ describe("Settlement", function () {
         await helpers.expectToEqual(0, receipt.logs.length);
     });
 
-    it("Should revert cancelOrder() if not called by maker", async () => {
-        const { chainId, users, getDeadline, createOrder, cancelOrder } = await helpers.setup();
-
-        const { order } = await createOrder(
-            users[0],
-            WETH[chainId],
-            DAI[chainId],
-            ethers.constants.WeiPerEther,
-            ethers.constants.WeiPerEther.mul(101),
-            getDeadline(24)
-        );
-        await helpers.expectToBeReverted("not-called-by-maker", cancelOrder(users[1], order));
-    });
-
     it("Should cancelOrder()", async () => {
         const {
             chainId,
@@ -410,7 +396,6 @@ describe("Settlement", function () {
         );
         await cancelOrder(users[0], order);
         await expectOrderCanceled(await order.hash(), users[0], fromToken, toToken);
-        await helpers.expectToBeReverted("already-canceled", cancelOrder(users[0], order));
 
         // Filling a canceled order does nothing
         await addLiquidity(
@@ -427,26 +412,6 @@ describe("Settlement", function () {
         );
         const receipt = await tx.wait();
         await helpers.expectToEqual(0, receipt.logs.length);
-    });
-
-    it("Should revert cancelOrder() if signature is invalid", async () => {
-        const { chainId, users, getDeadline, cancelOrder } = await helpers.setup();
-        const fromToken = WETH[chainId];
-        const toToken = DAI[chainId];
-
-        const order = new helpers.Order(
-            users[0],
-            fromToken,
-            toToken,
-            ethers.constants.WeiPerEther,
-            ethers.constants.WeiPerEther.mul(101),
-            users[0].address,
-            getDeadline(24)
-        );
-        await helpers.expectToBeReverted(
-            "invalid-signature",
-            cancelOrder(users[0], order, { maker: users[1].address })
-        );
     });
 
     it("Should fillOrders()", async () => {

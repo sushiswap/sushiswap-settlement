@@ -119,7 +119,7 @@ module.exports = async () => {
 
     const cancelOrder = async (signer, order, overrides = {}) => {
         const settlement = await getContract("Settlement", signer);
-        return await settlement.cancelOrder(await order.toArgs(overrides));
+        return await settlement.cancelOrder(await order.hash(overrides));
     };
 
     const fillOrder = async (signer, order, trade, overrides = {}) => {

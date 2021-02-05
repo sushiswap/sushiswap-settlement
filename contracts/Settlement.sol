@@ -26,7 +26,7 @@ contract Settlement is Ownable, ISettlement {
     bytes32 public immutable DOMAIN_SEPARATOR;
 
     // Hash of an order => if canceled
-    mapping(bytes32 => bool) public canceledOfHash;
+    mapping(address => mapping(bytes32 => bool)) public canceledOfHash;
     // Hash of an order => filledAmountIn
     mapping(bytes32 => uint256) public filledAmountInOfHash;
 
@@ -170,7 +170,7 @@ contract Settlement is Ownable, ISettlement {
 
     // Checks if an order is canceled / already fully filled
     function _validateStatus(FillOrderArgs memory args, bytes32 hash) internal view returns (bool) {
-        if (canceledOfHash[hash]) {
+        if (canceledOfHash[args.order.maker][hash]) {
             return false;
         }
         if (filledAmountInOfHash[hash].add(args.amountToFillIn) > args.order.amountIn) {
@@ -277,13 +277,8 @@ contract Settlement is Ownable, ISettlement {
     }
 
     // Cancels an order, has to been called by order maker
-    function cancelOrder(Orders.Order memory order) public override {
-        bytes32 hash = order.hash();
-        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, order.v, order.r, order.s);
-        require(signer != address(0) && signer == order.maker, "invalid-signature");
-        require(msg.sender == order.maker, "not-called-by-maker");
-        require(!canceledOfHash[hash], "already-canceled");
-        canceledOfHash[hash] = true;
+    function cancelOrder(bytes32 hash) public override {
+        canceledOfHash[msg.sender][hash] = true;
 
         emit OrderCanceled(hash);
     }

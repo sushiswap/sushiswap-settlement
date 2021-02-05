@@ -49,10 +49,6 @@ contract Settlement is ISettlement {
         // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "called-by-contract");
 
-        // Check if the order is valid
-        args.order.validate();
-        _validateArgs(args);
-
         // Check if the order is canceled / already fully filled
         bytes32 hash = args.order.hash();
         _validateStatus(args, hash);
@@ -77,14 +73,6 @@ contract Settlement is ISettlement {
         filledAmountInOfHash[hash] = filledAmountInOfHash[hash].add(args.amountToFillIn);
 
         emit OrderFilled(hash, args.amountToFillIn, amountOut);
-    }
-
-    // Checks if an order is valid - if it contains all the information required
-    function _validateArgs(FillOrderArgs memory args) internal {
-        require(args.amountToFillIn > 0, "invalid-amount-to-fill-in");
-        require(args.path.length >= 2, "invalid-path-length");
-        require(args.order.fromToken == args.path[0], "invalid-path-start");
-        require(args.order.toToken == args.path[args.path.length - 1], "invalid-path-end");
     }
 
     // Checks if an order is canceled / already fully filled

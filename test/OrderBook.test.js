@@ -33,10 +33,7 @@ describe("OrderBook", async () => {
 
         await helpers.expectToDeepEqual([hash], orderBook.allHashes(0, 1));
         await helpers.expectToDeepEqual([hash], orderBook.hashesOfMaker(users[0].address, 0, 1));
-        await helpers.expectToDeepEqual(
-            [hash],
-            orderBook.hashesOfFromToken(fromToken.address, 0, 1)
-        );
+        await helpers.expectToDeepEqual([hash], orderBook.hashesOfFromToken(fromToken.address, 0, 1));
         await helpers.expectToDeepEqual([hash], orderBook.hashesOfToToken(toToken.address, 0, 1));
     });
 
@@ -47,7 +44,7 @@ describe("OrderBook", async () => {
         const toToken = DAI[chainId];
 
         await helpers.expectToBeReverted(
-            "invalid-maker-address",
+            "invalid-maker",
             createOrder(
                 users[0],
                 fromToken,
@@ -69,7 +66,7 @@ describe("OrderBook", async () => {
         const toToken = DAI[chainId];
 
         await helpers.expectToBeReverted(
-            "invalid-from-token-address",
+            "invalid-from-token",
             createOrder(
                 users[0],
                 fromToken,
@@ -91,7 +88,7 @@ describe("OrderBook", async () => {
         const toToken = DAI[chainId];
 
         await helpers.expectToBeReverted(
-            "invalid-to-token-address",
+            "invalid-to-token",
             createOrder(
                 users[0],
                 fromToken,
@@ -113,7 +110,7 @@ describe("OrderBook", async () => {
         const toToken = DAI[chainId];
 
         await helpers.expectToBeReverted(
-            "duplicate-token-addresses",
+            "duplicate-tokens",
             createOrder(
                 users[0],
                 fromToken,
@@ -189,7 +186,7 @@ describe("OrderBook", async () => {
     });
 
     it("Should revert createOrder() if deadline isn't valid", async () => {
-        const { chainId, users, getDeadline, createOrder } = await helpers.setup();
+        const { chainId, users, createOrder } = await helpers.setup();
 
         const fromToken = WETH[chainId];
         const toToken = DAI[chainId];
@@ -202,7 +199,7 @@ describe("OrderBook", async () => {
                 toToken,
                 ethers.constants.WeiPerEther,
                 ethers.constants.WeiPerEther.mul(100),
-                getDeadline(0)
+                0
             )
         );
     });

@@ -1,31 +1,11 @@
-const { network, ethers, getChainId } = require("hardhat");
-const { WETH } = require("@sushiswap/sdk");
+const { network, getChainId } = require("hardhat");
 const getFactoryAddress = require("../test/helpers/getFactoryAddress");
 
 const INIT_CODE_HASH = "e18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303";
-const MULTISIG = "0x19B3Eb3Af5D93b77a5619b047De0EED7115A19e7";
-const SUSHI_BAR = "0x8798249c2E607446EfB7Ad49eC89dD1865Ff4272";
-
-const getWethAddress = async get => {
-    if (network.name === "hardhat") {
-        return (await get("WETH")).address;
-    } else {
-        const { chainId } = await ethers.provider.getNetwork();
-        return WETH[chainId].address;
-    }
-};
-
-const getSushiAddress = async get => {
-    if (network.name === "mainnet") {
-        return "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2";
-    } else {
-        return (await get("SUSHI")).address;
-    }
-};
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
-    const { call, deploy, deterministic, get } = deployments;
+    const { call, deploy, deterministic } = deployments;
 
     const artifact = await deployments.getArtifact("Settlement");
     const contract = {
@@ -47,19 +27,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     });
     await deploy("Settlement", {
         contract,
-        args: [
-            chainId,
-            orderBook,
-            network.name === "mainnet" ? MULTISIG : deployer,
-            await getFactoryAddress(),
-            await getWethAddress(get),
-            await getSushiAddress(get),
-            SUSHI_BAR,
-            20, // 0.2%
-            2000, // 20%
-        ],
+        args: [chainId, orderBook, await getFactoryAddress()],
         from: deployer,
         log: true,
-        gasLimit: 6000000,
+        gasLimit: 5000000,
     });
 };

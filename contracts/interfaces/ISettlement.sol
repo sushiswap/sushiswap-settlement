@@ -19,7 +19,5 @@ interface ISettlement {
 
     function fillOrder(FillOrderArgs calldata args) external returns (uint256 amountOut);
 
-    function fillOrders(FillOrderArgs[] calldata args) external returns (uint256[] memory amountsOut);
-
     function cancelOrder(bytes32 hash) external;
 }

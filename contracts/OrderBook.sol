@@ -98,14 +98,7 @@ contract OrderBook {
 
     // Creates an order
     function createOrder(Orders.Order memory order) public {
-        require(order.maker != address(0), "invalid-maker-address");
-        require(order.fromToken != address(0), "invalid-from-token-address");
-        require(order.toToken != address(0), "invalid-to-token-address");
-        require(order.fromToken != order.toToken, "duplicate-token-addresses");
-        require(order.amountIn > 0, "invalid-amount-in");
-        require(order.amountOutMin > 0, "invalid-amount-out-min");
-        require(order.recipient != address(0), "invalid-recipient");
-        require(order.deadline > block.timestamp, "invalid-deadline");
+        order.validate();
 
         bytes32 hash = order.hash();
         address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, order.v, order.r, order.s);

@@ -53,9 +53,12 @@ contract Settlement is ISettlement {
         bytes32 hash = args.order.hash();
         _validateStatus(args, hash);
 
-        // Check if the signature is valid
-        address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, args.order.v, args.order.r, args.order.s);
-        require(signer != address(0) && signer == args.order.maker, "invalid-signature");
+        // Signature validation not needed on second and consequent fills
+        if (filledAmountInOfHash[hash] == 0) {
+            // Check if the signature is valid
+            address signer = EIP712.recover(DOMAIN_SEPARATOR, hash, args.order.v, args.order.r, args.order.s);
+            require(signer != address(0) && signer == args.order.maker, "invalid-signature");
+        }
 
         // Calculates amountOutMin
         uint256 amountOutMin = (args.order.amountOutMin.mul(args.amountToFillIn) / args.order.amountIn);
